@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字幕文件监听器</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 字幕文件监听器</h1>
+            <div class="status-indicator">
+                <span id="status-text">未连接</span>
+                <div id="status-dot" class="status-dot offline"></div>
+            </div>
+        </header>
+
+        <main>
+            <!-- 日志面板 -->
+            <section class="log-panel">
+                <div class="log-header">
+                    <h2 class="log-title">处理日志</h2>
+                    <div class="log-meta">
+                        <span class="meta-item">状态: <strong id="log-status">未知</strong></span>
+                        <span class="meta-item">已处理: <strong id="processed-count-log">0</strong></span>
+                        <span class="meta-item">最后更新: <strong id="last-update-log">-</strong></span>
+                          <div class="log-refresh-indicator">
+                            <span id="log-refresh-status">自动刷新中</span>
+                            <div id="log-refresh-dot" class="refresh-dot active"></div>
+                        </div>
+                    </div>
+                    <div class="log-controls">
+                        <div class="log-filter-container">
+                            <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"></path></svg>
+                            <input type="text" id="log-filter-input" class="log-filter-input" placeholder="过滤日志...">
+                        </div>
+                       <div>
+                         <button id="clear-logs-btn" class="btn btn-outline btn-sm">清空</button>
+                        <button id="refresh-logs-btn" class="btn btn-outline btn-sm">刷新</button>
+                       </div>
+                      
+                    </div>
+                </div>
+                <div id="log-container" class="log-container">
+                    <div class="log-entry">
+                        <span class="log-time">等待日志...</span>
+                        <span class="log-message">系统启动中</span>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- 配置面板 -->
+            <section class="config-panel">
+                <h2>高级配置</h2>
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label for="watch-dirs">监听目录:</label>
+                        <div id="watch-dirs-container">
+                            <div class="watch-dir-item">
+                                <input type="text" class="watch-dir-input" placeholder="./test_subtitles">
+                                <button type="button" class="remove-dir-btn" onclick="removeWatchDir(this)">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: -22px;">
+                        <label></label>
+                        <button type="button" id="add-watch-dir-btn" onclick="addWatchDir()">添加目录</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="file-extensions">文件扩展名:</label>
+                        <input type="text" id="file-extensions" placeholder=".xml" title="多个扩展名用逗号分隔">
+                    </div>
+                    <div class="form-group">
+                        <label for="wait-time">等待时间(秒):</label>
+                        <input type="number" id="wait-time" min="0" step="0.1" placeholder="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-retries">最大重试次数:</label>
+                        <input type="number" id="max-retries" min="1" max="10" placeholder="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="retry-delay">重试延迟(秒):</label>
+                        <input type="number" id="retry-delay" min="0" step="0.1" placeholder="1.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="log-level">日志级别:</label>
+                        <select id="log-level">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                    </div>
+                       <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="enable-logging"> 启用日志记录
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="max-log-lines">日志最大行数:</label>
+                        <input type="number" id="max-log-lines" min="1000" max="10000" placeholder="3000" title="超过此行数时自动清理日志">
+                    </div>
+                    <div class="form-group">
+                        <label for="keep-log-lines">保留日志行数:</label>
+                        <input type="number" id="keep-log-lines" min="500" max="5000" placeholder="1000" title="清理日志时保留的最新行数">
+                    </div>
+                 
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="cron-enabled"> 启用定时任务
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="cron-schedule">Cron表达式 (5段格式):</label>
+                        <input type="text" id="cron-schedule" placeholder="*/5 * * * *" title="格式: 分 时 日 月 周">
+                    </div>
+                    <div class="form-group">
+                        <label>定时任务状态:</label>
+                        <span id="cron-status" class="status-text disabled">未启用</span>
+                    </div>
+                </div>
+                <div class="config-buttons">
+                    <button id="save-config-btn" class="btn btn-primary">保存配置</button>
+                    <button id="load-config-btn" class="btn btn-outline">重新加载配置</button>
+                </div>
+            </section>
+
+            <!-- 控制与测试面板 -->
+            <section class="control-panel">
+                <h2>控制与测试</h2>
+                <div class="button-group">
+                    <button id="start-btn" class="btn btn-primary">开始监听</button>
+                    <button id="stop-btn" class="btn btn-secondary">停止监听</button>
+                    <button id="restart-btn" class="btn btn-warning">重启监听</button>
+                    <button id="process-now-btn" class="btn btn-accent">立即处理</button>
+                    <button id="refresh-btn" class="btn btn-outline">刷新状态</button>
+                    <button id="clear-processed-btn" class="btn btn-outline">清空记录</button>
+                    <button id="create-test-btn" class="btn btn-outline">创建测试文件</button>
+                </div>
+                <div class="test-section">
+                    <div id="test-result" class="test-result"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
