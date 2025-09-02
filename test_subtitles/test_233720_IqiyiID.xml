@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<root>
+    <sourceprovider>IqiyiID</sourceprovider><body type="subtitle">
+        <p>这是一个测试字幕文件</p>
+        <p>用于测试XML属性修改功能</p>
+        <p>当前body type="text"</p>
+    </body>
+</root>

@@ -274,20 +274,7 @@ def create_test():
     return jsonify({"message": f"测试文件已创建: {test_file}", "success": True})
 
 if __name__ == '__main__':
-    # 屏蔽Flask开发服务器警告
-    import warnings
-    from werkzeug.serving import WSGIRequestHandler
-    
-    # 过滤Flask开发服务器警告
-    warnings.filterwarnings('ignore', message='This is a development server')
-    warnings.filterwarnings('ignore', message='Do not use it in a production deployment')
-    
-    # 屏蔽werkzeug的日志输出
-    import logging
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-    
-    # 启动时加载一次配置
+        # 启动时加载一次配置
     load_config()
     setup_logger()
     

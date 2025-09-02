@@ -1,1 +1,14 @@
-2025-09-01 22:40:57,622 - subtitle_watcher - INFO - 🗑️ 已清空 0 个文件的处理记录，重置文件检查状态
+2025-09-02 00:09:57,804 - subtitle_watcher - INFO - 🗑️ 已清空 0 个文件的处理记录，重置文件检查状态
+2025-09-02 00:10:01,459 - subtitle_watcher - INFO - 🔄 重启监听器...
+2025-09-02 00:10:01,460 - subtitle_watcher - INFO - 🛑 停止监听
+2025-09-02 00:10:02,462 - subtitle_watcher - INFO - 📁 已添加监听目录: D:\SynologyDrive\code\subtitle\test_subtitles
+2025-09-02 00:10:02,464 - subtitle_watcher - INFO - 👀 开始监听 1 个目录
+2025-09-02 00:10:02,464 - subtitle_watcher - INFO -   - D:\SynologyDrive\code\subtitle\test_subtitles
+2025-09-02 00:10:02,464 - subtitle_watcher - INFO - 🔍 监听器状态: 运行中
+2025-09-02 00:10:02,464 - subtitle_watcher - INFO - 📋 支持的文件类型: ['.xml']
+2025-09-02 00:10:02,465 - subtitle_watcher - INFO - 重启监听器成功
+2025-09-02 00:10:06,638 - subtitle_watcher - INFO - 📄 检测到新文件（创建）: ./test_subtitles\test_001006.xml
+2025-09-02 00:10:06,944 - subtitle_watcher - INFO - ✅ 处理完成: ./test_subtitles\test_001006.xml
+2025-09-02 00:10:06,944 - subtitle_watcher - INFO - 📄 检测到新文件（创建）: ./test_subtitles\test_001006_IqiyiID.xml
+2025-09-02 00:10:07,245 - subtitle_watcher - INFO - ⏩ 文件已符合要求: ./test_subtitles\test_001006_IqiyiID.xml
+2025-09-02 00:10:17,832 - subtitle_watcher - INFO - 配置文件已重新加载

@@ -8,7 +8,6 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from subtitle_utils import modify_xml
-from watchdog.observers.polling import PollingObserver
 
 # 配置文件路径
 CONFIG_FILE = "./config.json"
@@ -306,7 +305,7 @@ def start_watcher():
     if _running:
         log_message('info', "🔄 停止现有监听器")
         stop_watcher()
-        time.sleep(1.0)  # 增加等待时间确保完全停止
+        time.sleep(0.5)  # 等待完全停止
     
     try:
         # 支持多个监听目录
@@ -319,15 +318,8 @@ def start_watcher():
         if not watch_dirs:
             raise ValueError("没有配置监听目录")
         
-        # 确保之前的Observer完全清理
-        if _observer is not None:
-            try:
-                if _observer.is_alive():
-                    _observer.stop()
-                    _observer.join(timeout=10)
-            except:
-                pass
-            _observer = None
+        _running = True
+        _observer = Observer()
         
         # 创建或重置全局处理器实例
         if _handler is None:
@@ -336,16 +328,22 @@ def start_watcher():
             # 重置处理器状态
             _handler.processing_files.clear()
         
-        # 构建监听目录列表
+        # 为每个目录设置监听
         valid_dirs = []
         for watch_dir in watch_dirs:
             try:
+                # 确保监听目录存在
                 os.makedirs(watch_dir, exist_ok=True)
+                
+                # 验证目录权限
                 if not os.access(watch_dir, os.R_OK | os.W_OK):
                     log_message('warning', f"⚠️ 跳过无权限目录: {watch_dir}")
                     continue
+                
+                _observer.schedule(_handler, watch_dir, recursive=True)
                 valid_dirs.append(os.path.abspath(watch_dir))
                 log_message('info', f"📁 已添加监听目录: {os.path.abspath(watch_dir)}")
+                
             except Exception as e:
                 log_message('warning', f"⚠️ 跳过无效目录 {watch_dir}: {e}")
                 continue
@@ -353,35 +351,7 @@ def start_watcher():
         if not valid_dirs:
             raise ValueError("没有有效的监听目录")
         
-        # 先尝试使用系统原生Observer
-        def schedule_on(observer):
-            for dir_path in valid_dirs:
-                observer.schedule(_handler, dir_path, recursive=True)
-        
-        try:
-            local_observer = Observer()
-            schedule_on(local_observer)
-            _running = True
-            local_observer.start()
-            _observer = local_observer
-        except Exception as e:
-            # 处理 Windows 上的 '_ThreadHandle' 问题，回退到轮询观察者
-            need_polling = "_ThreadHandle" in str(e) or "handle" in str(e)
-            if not need_polling:
-                # 回滚运行状态并抛出原始异常
-                _running = False
-                raise
-            log_message('warning', f"⚠️ 原生文件监听器启动失败（{e}），将回退到 PollingObserver（轮询模式）。")
-            try:
-                polling_observer = PollingObserver()
-                schedule_on(polling_observer)
-                _running = True
-                polling_observer.start()
-                _observer = polling_observer
-            except Exception as e2:
-                _running = False
-                _observer = None
-                raise RuntimeError(f"轮询监听器也启动失败: {e2}")
+        _observer.start()
         
         log_message('info', f"👀 开始监听 {len(valid_dirs)} 个目录")
         for dir_path in valid_dirs:
@@ -393,13 +363,6 @@ def start_watcher():
         
     except Exception as e:
         _running = False
-        if _observer is not None:
-            try:
-                _observer.stop()
-                _observer.join(timeout=5)
-            except:
-                pass
-            _observer = None
         log_message('error', f"❌ 启动监听器失败: {e}")
         return False
 
