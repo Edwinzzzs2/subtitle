@@ -137,6 +137,9 @@ class DanmuDownloader:
                 if failed_sources:
                     success_message += f"，失败 {len(failed_sources)} 个源"
                 
+                # 计算总弹幕数量
+                total_danmu_count = sum(file_info.get('danmu_count', 0) for file_info in downloaded_files)
+                
                 return {
                     'success': True,
                     'message': success_message,
@@ -144,7 +147,8 @@ class DanmuDownloader:
                     'downloaded_files': downloaded_files,
                     'failed_sources': failed_sources,
                     'series_name': video_info['series_name'],
-                    'episode': video_info['episode']
+                    'episode': video_info['episode'],
+                    'danmu_count': total_danmu_count
                 }
             else:
                 return {

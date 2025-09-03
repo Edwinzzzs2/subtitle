@@ -237,5 +237,6 @@ fabric.properties
 
 # Project specific
 logs/
-test_subtitles/*.xml
+test_subtitles/
+test_videos/
 config.json

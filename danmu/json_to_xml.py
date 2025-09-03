@@ -87,14 +87,17 @@ class JsonToXmlConverter:
         完全仿照misaka_danmu_server的_generate_dandan_xml函数
         """
         xml_parts = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<?xml version="1.0" encoding="utf-8"?>',
             '<i>',
-            '  <chatserver>danmu</chatserver>',
-            '  <chatid>0</chatid>',
-            '  <mission>0</mission>',
-            f'  <maxlimit>{len(comments)}</maxlimit>',
-            '  <source>kuyun</source>',
-            f'  <sourceprovider>{provider_name}</sourceprovider>'
+            '    <chatid>0</chatid>',
+            '    <chatserver>api.bilibili.com</chatserver>',
+            f'    <sourceprovider>{provider_name}</sourceprovider>',
+            f'    <datasize>{len(comments)}</datasize>',
+            '    <mission>0</mission>',
+            f'    <maxlimit>{len(comments)}</maxlimit>',
+            '    <state>0</state>',
+            '    <real_name>0</real_name>',
+            '    <source>k-v</source>'
         ]
         
         for comment in comments:
