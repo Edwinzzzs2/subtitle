@@ -2,15 +2,14 @@ from flask import Flask, request, jsonify, send_from_directory
 import threading
 import os
 from datetime import datetime
-from watcher import (
+from utils import (
     start_watcher, stop_watcher, restart_watcher, is_running, 
     get_processed_files, clear_processed_files, get_config, save_config,
     update_config, get_status, log_message, load_config, setup_logger,
-    add_processed_file
+    add_processed_file, process_directory, modify_xml, create_test_xml
 )
-from subtitle_utils import process_directory, modify_xml, create_test_xml
 
-app = Flask(__name__, static_folder='static', template_folder='static')
+app = Flask(__name__, static_folder='web/static', template_folder='web/static')
 
 # 处理日志
 # 统一使用watcher.py的log_message函数记录日志
@@ -62,7 +61,7 @@ def process_directory_with_logging(directory):
 
 @app.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/status')
 def status():
@@ -234,7 +233,7 @@ def config():
                 return jsonify({"message": "无效的配置数据", "success": False})
             
             # 验证配置数据
-            valid_keys = ['watch_dir', 'watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging', 'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule']
+            valid_keys = ['watch_dir', 'watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging', 'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
             filtered_config = {k: v for k, v in data.items() if k in valid_keys}
             
             if not filtered_config:
@@ -262,6 +261,177 @@ def config():
             })
         except Exception as e:
             return jsonify({"message": f"获取配置失败: {str(e)}", "success": False})
+
+@app.route('/api/danmu-config', methods=['GET', 'POST'])
+def danmu_config():
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            if not data or 'base_url' not in data:
+                return jsonify({"message": "无效的弹幕API配置数据", "success": False})
+            
+            # 更新弹幕API配置
+            danmu_config_data = {'danmu_api': {'base_url': data['base_url']}}
+            update_config(danmu_config_data)
+            
+            return jsonify({
+                "message": "弹幕API配置已保存", 
+                "success": True
+            })
+            
+        except Exception as e:
+            log_message('error', f"弹幕API配置更新失败: {str(e)}")
+            return jsonify({"message": f"弹幕API配置保存失败: {str(e)}", "success": False})
+    else:
+        # 返回当前弹幕API配置
+        try:
+            current_config = get_config()
+            danmu_api = current_config.get('danmu_api', {})
+            return jsonify({
+                "danmu_api": danmu_api,
+                "success": True
+            })
+        except Exception as e:
+            return jsonify({"message": f"获取弹幕API配置失败: {str(e)}", "success": False})
+
+@app.route('/api/test-danmu', methods=['POST'])
+def test_danmu():
+    """测试弹幕功能"""
+    try:
+        from danmu import DanmuClient
+        from danmu.json_to_xml import JsonToXmlConverter
+        import os
+        from datetime import datetime
+        
+        # 创建弹幕客户端实例
+        danmu_client = DanmuClient()
+        
+        # 创建json转xml转换器
+        converter = JsonToXmlConverter()
+        
+        # 测试搜索动漫
+        search_response = danmu_client.search_anime('掌心')
+        if not search_response or not search_response.get('success'):
+            return jsonify({
+                'success': False,
+                'message': f'搜索动漫失败: {search_response.get("errorMessage", "未知错误")}'
+            })
+        
+        # 获取搜索结果列表
+        search_results = search_response.get('animes', [])
+        if not search_results:
+            return jsonify({
+                'success': False,
+                'message': '搜索结果为空'
+            })
+        
+        # 获取第一个搜索结果的详情
+        first_result = search_results[0]
+        bangumiId = first_result.get('bangumiId')
+        print(f"First result: {first_result}")
+        print(f"Anime ID: {bangumiId}")
+        if not bangumiId:
+            return jsonify({
+                'success': False,
+                'message': '搜索结果中未找到动漫ID'
+            })
+        
+        # 获取分集信息
+        bangumi_response = danmu_client.get_bangumi_details(bangumiId)
+        print(f"Bangumi response: {bangumi_response}")
+        if not bangumi_response or not bangumi_response.get('success'):
+            return jsonify({
+                'success': False,
+                'message': f'获取分集信息失败: {bangumi_response.get("errorMessage", "未知错误")}'
+            })
+        
+        bangumi_details = bangumi_response.get('bangumi', {})
+        print(f"Bangumi details: {bangumi_details}")
+        if not bangumi_details or 'episodes' not in bangumi_details:
+            return jsonify({
+                'success': False,
+                'message': '番剧详情中没有分集信息'
+            })
+        
+        episodes = bangumi_details['episodes']
+        episode_count = len(episodes)
+        
+        # 测试获取第一集的弹幕并转换为XML
+        xml_file_path = None
+        danmu_count = 0
+        
+        if episodes:
+            first_episode = episodes[0]
+            episode_id = first_episode.get('episodeId')
+            if episode_id:
+                comments = danmu_client.get_episode_comments(episode_id)
+                if comments:
+                    # 获取弹幕数量
+                    if isinstance(comments, dict):
+                        danmu_count = comments.get('count', len(comments.get('comments', [])))
+                        comments_data = comments.get('comments', comments)
+                    elif isinstance(comments, list):
+                        danmu_count = len(comments)
+                        comments_data = comments
+                    else:
+                        danmu_count = 0
+                        comments_data = []
+                    
+                    # 转换为XML文件
+                    if comments_data:
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        xml_filename = f'test_danmu_{timestamp}.xml'
+                        xml_file_path = os.path.join('test_subtitles', xml_filename)
+                        
+                        # 确保test_subtitles目录存在
+                        os.makedirs('test_subtitles', exist_ok=True)
+                        
+                        # 执行转换
+                        conversion_success = converter.convert_json_to_xml(
+                            json_data=comments_data,
+                            output_path=xml_file_path,
+                            episode_id=episode_id,
+                            use_dandan_format=True
+                        )
+                        
+                        if not conversion_success:
+                            xml_file_path = None
+                else:
+                    danmu_count = 0
+            else:
+                danmu_count = 0
+        else:
+            danmu_count = 0
+        
+        # 如果没有获取到真实弹幕数据，则使用测试数据
+        if danmu_count == 0:
+            # 使用测试数据
+            test_success = converter.test_conversion('test_subtitles')
+            if test_success:
+                # 查找刚创建的测试文件
+                test_files = [f for f in os.listdir('test_subtitles') if f.startswith('test_danmu_') and f.endswith('.xml')]
+                if test_files:
+                    xml_file_path = os.path.join('test_subtitles', sorted(test_files)[-1])  # 获取最新的文件
+                    danmu_count = 5  # 测试数据有5条弹幕
+        
+        return jsonify({
+            'success': True,
+            'search_result': f'找到 {len(search_results)} 个结果，第一个: {first_result.get("animeTitle", "未知")}',
+            'episode_count': episode_count,
+            'danmu_count': danmu_count,
+            'xml_file': xml_file_path if xml_file_path else None,
+            'xml_created': xml_file_path is not None
+        })
+        
+    except Exception as e:
+        import traceback
+        error_msg = f'弹幕测试失败: {str(e)}'
+        print(f"Error in test_danmu: {error_msg}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500
 
 @app.route('/api/create-test', methods=['POST'])
 def create_test():

@@ -14,5 +14,8 @@
     "./test_subtitles"
   ],
   "max_log_lines": 5000,
-  "keep_log_lines": 3000
+  "keep_log_lines": 2000,
+  "danmu_api": {
+    "base_url": ""
+  }
 }

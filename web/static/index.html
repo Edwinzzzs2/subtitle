@@ -122,6 +122,10 @@
                         <label>定时任务状态:</label>
                         <span id="cron-status" class="status-text disabled">未启用</span>
                     </div>
+                    <div class="form-group">
+                        <label for="danmu-api-url">弹幕API地址:</label>
+                        <input type="text" id="danmu-api-url" placeholder="https://danmu.dolast.top:10010" title="弹幕API的基础URL地址">
+                    </div>
                 </div>
                 <div class="config-buttons">
                     <button id="save-config-btn" class="btn btn-primary">保存配置</button>
@@ -140,6 +144,7 @@
                     <button id="refresh-btn" class="btn btn-outline">刷新状态</button>
                     <button id="clear-processed-btn" class="btn btn-outline">清空记录</button>
                     <button id="create-test-btn" class="btn btn-outline">创建测试文件</button>
+                    <button id="test-danmu-btn" class="btn btn-outline">测试弹幕</button>
                 </div>
                 <div class="test-section">
                     <div id="test-result" class="test-result"></div>

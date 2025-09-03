@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from subtitle_utils import modify_xml
+from .subtitle_utils import modify_xml
 
 # 配置文件路径
 CONFIG_FILE = "./config.json"

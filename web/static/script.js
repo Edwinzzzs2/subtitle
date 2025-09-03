@@ -27,6 +27,7 @@ class SubtitleWatcher {
         this.clearLogsBtn = document.getElementById('clear-logs-btn');
         this.refreshLogsBtn = document.getElementById('refresh-logs-btn');
         this.createTestBtn = document.getElementById('create-test-btn');
+        this.testDanmuBtn = document.getElementById('test-danmu-btn');
 
         // 状态元素
         this.statusText = document.getElementById('status-text');
@@ -53,6 +54,9 @@ class SubtitleWatcher {
         this.cronEnabled = document.getElementById('cron-enabled');
         this.cronSchedule = document.getElementById('cron-schedule');
         this.cronStatus = document.getElementById('cron-status');
+        
+        // 弹幕API配置元素
+        this.danmuApiUrl = document.getElementById('danmu-api-url');
 
         // 其他元素
         this.logContainer = document.getElementById('log-container');
@@ -72,6 +76,7 @@ class SubtitleWatcher {
         this.clearLogsBtn.addEventListener('click', () => this.clearLogs());
         this.refreshLogsBtn.addEventListener('click', () => this.refreshLogs());
         this.createTestBtn.addEventListener('click', () => this.createTestFile());
+        this.testDanmuBtn.addEventListener('click', () => this.testDanmu());
         
         // Cron定时任务事件
         this.cronEnabled.addEventListener('change', () => this.toggleCron());
@@ -249,6 +254,9 @@ class SubtitleWatcher {
                 this.cronEnabled.checked = config.cron_enabled || false;
                 this.cronSchedule.value = config.cron_schedule || '0 5 * * *';
                 
+                // 加载弹幕API配置
+                this.danmuApiUrl.value = (config.danmu_api && config.danmu_api.base_url) || '';
+                
                 // 如果之前定时任务在运行或者配置中启用了定时任务，则重新启动
                 if ((wasCronRunning || this.cronEnabled.checked) && this.cronSchedule.value.trim()) {
                     this.cronEnabled.checked = true;
@@ -292,7 +300,10 @@ class SubtitleWatcher {
                 keep_log_lines: parseInt(this.keepLogLines.value) || 1000,
                 enable_logging: this.enableLogging.checked,
                 cron_enabled: this.cronEnabled.checked,
-                cron_schedule: this.cronSchedule.value.trim()
+                cron_schedule: this.cronSchedule.value.trim(),
+                danmu_api: {
+                    base_url: this.danmuApiUrl.value.trim()
+                }
             };
             
             // 验证配置
@@ -390,6 +401,42 @@ class SubtitleWatcher {
             this.testResult.className = 'test-result error';
         } finally {
             this.setButtonLoading(this.createTestBtn, false);
+        }
+    }
+
+    async testDanmu() {
+        try {
+            this.setButtonLoading(this.testDanmuBtn, true);
+            const result = await this.apiCall('/test-danmu', { method: 'POST' });
+            
+            if (result.success) {
+                let xmlInfo = '';
+                if (result.xml_created && result.xml_file) {
+                    xmlInfo = `<p><strong>XML文件:</strong> <span class="success">已创建 ${result.xml_file}</span></p>`;
+                } else {
+                    xmlInfo = `<p><strong>XML文件:</strong> <span class="warning">未创建</span></p>`;
+                }
+                
+                this.testResult.innerHTML = `
+                    <div class="danmu-test-result">
+                        <h4>弹幕测试结果</h4>
+                        <p><strong>搜索结果:</strong> ${result.search_result}</p>
+                        <p><strong>分集数量:</strong> ${result.episode_count}</p>
+                        <p><strong>弹幕数量:</strong> ${result.danmu_count}</p>
+                        ${xmlInfo}
+                        <p><strong>测试状态:</strong> <span class="success">成功</span></p>
+                    </div>
+                `;
+                this.testResult.className = 'test-result success';
+            } else {
+                this.testResult.innerHTML = `弹幕测试失败: ${result.message}`;
+                this.testResult.className = 'test-result error';
+            }
+        } catch (error) {
+            this.testResult.innerHTML = `弹幕测试失败: ${error.message}`;
+            this.testResult.className = 'test-result error';
+        } finally {
+            this.setButtonLoading(this.testDanmuBtn, false);
         }
     }
 
