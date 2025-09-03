@@ -1,11 +1,12 @@
 import os
 import logging
 from lxml import etree
+from config import DANMU_SOURCES, DEFAULT_SOURCE
 
 # 获取日志记录器
 logger = logging.getLogger('subtitle_watcher')
 
-def modify_xml(filepath):
+def modify_xml(filepath, source=None):
     """
     修改XML文件，将body元素的type属性设置为subtitle，并添加sourceprovider标签
     返回值:
@@ -42,12 +43,16 @@ def modify_xml(filepath):
         
         # 如果不存在sourceprovider标签，则添加
         if not sourceprovider_exists:
+            # 确定使用的弹幕源
+            current_source = source or DEFAULT_SOURCE
+            provider_id = DANMU_SOURCES.get(current_source, DANMU_SOURCES[DEFAULT_SOURCE])
+            
             sourceprovider = etree.Element("sourceprovider")
-            sourceprovider.text = "IqiyiID"
+            sourceprovider.text = provider_id
             # 将sourceprovider标签插入到根元素的开头
             root.insert(0, sourceprovider)
             modified = True
-            # logger.info(f"✅ 添加sourceprovider标签: IqiyiID in {filepath}")
+            # logger.info(f"✅ 添加sourceprovider标签: {provider_id} in {filepath}")
         
         # 如果有修改，保存文件并重命名
         if modified:
@@ -55,7 +60,18 @@ def modify_xml(filepath):
             dir_path = os.path.dirname(filepath)
             filename = os.path.basename(filepath)
             name, ext = os.path.splitext(filename)
-            new_filename = f"{name}_IqiyiID{ext}"
+            
+            # 确定使用的弹幕源后缀
+            current_source = source or DEFAULT_SOURCE
+            provider_id = DANMU_SOURCES.get(current_source, DANMU_SOURCES[DEFAULT_SOURCE])
+            suffix = f"_{provider_id}"
+            
+            # 检查文件名是否已经包含对应的后缀，避免重复拼接
+            if not name.endswith(suffix):
+                new_filename = f"{name}{suffix}{ext}"
+            else:
+                new_filename = filename  # 如果已经有后缀，保持原文件名
+            
             new_filepath = os.path.join(dir_path, new_filename)
             
             # 检查新文件名是否已存在
@@ -79,10 +95,16 @@ def modify_xml(filepath):
     except Exception as e:
         return ('error', f"处理失败: {type(e).__name__}: {e}")
 
-def process_directory(directory):
+def process_directory(directory, source=None):
     """
     处理指定目录下的所有XML文件
-    返回处理的文件数量
+    
+    Args:
+        directory: 要处理的目录路径
+        source: 弹幕源类型 ('iqiyi', 'bilibili', 'tencent', 'youku')
+    
+    Returns:
+        处理的文件数量
     """
     if not os.path.exists(directory):
         raise Exception(f"目录不存在: {directory}")
@@ -93,7 +115,7 @@ def process_directory(directory):
             if file.endswith('.xml'):
                 filepath = os.path.join(root, file)
                 try:
-                    result = modify_xml(filepath)
+                    result = modify_xml(filepath, source)
                     if result is True:
                         count += 1
                     elif isinstance(result, tuple) and result[0] == 'error':
@@ -121,3 +143,20 @@ def create_test_xml(filepath, body_type="text"):
         f.write(xml_content)
     
     print(f"📝 创建测试文件: {filepath}")
+
+def create_test_video(filepath, size_kb=1024):
+    """
+    创建测试用的视频文件（空文件，仅用于测试）
+    
+    Args:
+        filepath: 文件路径
+        size_kb: 文件大小（KB）
+    """
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    # 创建指定大小的空文件
+    with open(filepath, 'wb') as f:
+        f.seek(size_kb * 1024 - 1)
+        f.write(b'\0')
+    
+    print(f"📹 创建测试视频文件: {filepath} ({size_kb}KB)")

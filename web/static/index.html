@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>字幕文件监听器</title>
+    <title>视频文件监听器</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎬 字幕文件监听器</h1>
+            <h1>🎬 视频文件监听器</h1>
             <div class="status-indicator">
                 <span id="status-text">未连接</span>
                 <div id="status-dot" class="status-dot offline"></div>
@@ -61,7 +61,7 @@
                         <label for="watch-dirs">监听目录:</label>
                         <div id="watch-dirs-container">
                             <div class="watch-dir-item">
-                                <input type="text" class="watch-dir-input" placeholder="./test_subtitles">
+                                <input type="text" class="watch-dir-input" placeholder="./test_videos">
                                 <button type="button" class="remove-dir-btn" onclick="removeWatchDir(this)">删除</button>
                             </div>
                         </div>
@@ -71,8 +71,8 @@
                         <button type="button" id="add-watch-dir-btn" onclick="addWatchDir()">添加目录</button>
                     </div>
                     <div class="form-group">
-                        <label for="file-extensions">文件扩展名:</label>
-                        <input type="text" id="file-extensions" placeholder=".xml" title="多个扩展名用逗号分隔">
+                        <label for="file-extensions">视频文件扩展名:</label>
+                        <input type="text" id="file-extensions" placeholder=".mp4, .mkv, .avi" title="多个扩展名用逗号分隔">
                     </div>
                     <div class="form-group">
                         <label for="wait-time">等待时间(秒):</label>
@@ -126,6 +126,10 @@
                         <label for="danmu-api-url">弹幕API地址:</label>
                         <input type="text" id="danmu-api-url" placeholder="https://danmu.dolast.top:10010" title="弹幕API的基础URL地址">
                     </div>
+                    <div class="form-group">
+                        <label for="danmu-api-token">弹幕API Token:</label>
+                        <input type="password" id="danmu-api-token" placeholder="请输入API Token" title="弹幕API的访问令牌">
+                    </div>
                 </div>
                 <div class="config-buttons">
                     <button id="save-config-btn" class="btn btn-primary">保存配置</button>
@@ -143,7 +147,7 @@
                     <button id="process-now-btn" class="btn btn-accent">立即处理</button>
                     <button id="refresh-btn" class="btn btn-outline">刷新状态</button>
                     <button id="clear-processed-btn" class="btn btn-outline">清空记录</button>
-                    <button id="create-test-btn" class="btn btn-outline">创建测试文件</button>
+                    <button id="create-test-btn" class="btn btn-outline">创建测试视频</button>
                     <button id="test-danmu-btn" class="btn btn-outline">测试弹幕</button>
                 </div>
                 <div class="test-section">

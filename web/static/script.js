@@ -57,6 +57,7 @@ class SubtitleWatcher {
         
         // 弹幕API配置元素
         this.danmuApiUrl = document.getElementById('danmu-api-url');
+        this.danmuApiToken = document.getElementById('danmu-api-token');
 
         // 其他元素
         this.logContainer = document.getElementById('log-container');
@@ -256,6 +257,7 @@ class SubtitleWatcher {
                 
                 // 加载弹幕API配置
                 this.danmuApiUrl.value = (config.danmu_api && config.danmu_api.base_url) || '';
+                this.danmuApiToken.value = (config.danmu_api && config.danmu_api.token) || '';
                 
                 // 如果之前定时任务在运行或者配置中启用了定时任务，则重新启动
                 if ((wasCronRunning || this.cronEnabled.checked) && this.cronSchedule.value.trim()) {
@@ -302,7 +304,8 @@ class SubtitleWatcher {
                 cron_enabled: this.cronEnabled.checked,
                 cron_schedule: this.cronSchedule.value.trim(),
                 danmu_api: {
-                    base_url: this.danmuApiUrl.value.trim()
+                    base_url: this.danmuApiUrl.value.trim(),
+                    token: this.danmuApiToken.value.trim()
                 }
             };
             
@@ -397,7 +400,7 @@ class SubtitleWatcher {
             this.testResult.className = 'test-result success';
             this.refreshLogs();
         } catch (error) {
-            this.testResult.innerHTML = `创建测试文件失败: ${error.message}`;
+            this.testResult.innerHTML = `创建测试视频失败: ${error.message}`;
             this.testResult.className = 'test-result error';
         } finally {
             this.setButtonLoading(this.createTestBtn, false);

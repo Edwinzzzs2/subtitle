@@ -6,3 +6,4 @@ __pycache__/
 .gitignore
 logs/
 test_subtitles/
+test_videos/

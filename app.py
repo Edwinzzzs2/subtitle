@@ -40,7 +40,7 @@ def process_directory_with_logging(directory):
                 filepath = os.path.join(root, file)
                 try:
                     log_message('info', f"🔄 正在处理: {filepath}")
-                    result = modify_xml(filepath)
+                    result = modify_xml(filepath, source=None)  # 使用默认弹幕源
                     
                     if result is True:
                         count += 1
@@ -76,7 +76,7 @@ def start():
     # 直接调用start_watcher，它内部会处理重复启动的情况
     success = start_watcher()
     if success:
-        log_message('info', "开始监听字幕文件")
+        log_message('info', "开始监听视频文件")
         return jsonify({"message": "监听器启动成功", "success": True})
     else:
         log_message('error', "监听器启动失败")
@@ -267,11 +267,21 @@ def danmu_config():
     if request.method == 'POST':
         try:
             data = request.get_json()
-            if not data or 'base_url' not in data:
+            if not data:
                 return jsonify({"message": "无效的弹幕API配置数据", "success": False})
             
+            # 构建弹幕API配置数据
+            danmu_api_config = {}
+            if 'base_url' in data:
+                danmu_api_config['base_url'] = data['base_url']
+            if 'token' in data:
+                danmu_api_config['token'] = data['token']
+            
+            if not danmu_api_config:
+                return jsonify({"message": "未提供有效的配置字段", "success": False})
+            
             # 更新弹幕API配置
-            danmu_config_data = {'danmu_api': {'base_url': data['base_url']}}
+            danmu_config_data = {'danmu_api': danmu_api_config}
             update_config(danmu_config_data)
             
             return jsonify({
@@ -296,7 +306,7 @@ def danmu_config():
 
 @app.route('/api/test-danmu', methods=['POST'])
 def test_danmu():
-    """测试弹幕功能"""
+    """测试弹幕功能（新版API）"""
     try:
         from danmu import DanmuClient
         from danmu.json_to_xml import JsonToXmlConverter
@@ -309,99 +319,64 @@ def test_danmu():
         # 创建json转xml转换器
         converter = JsonToXmlConverter()
         
-        # 测试搜索动漫
-        search_response = danmu_client.search_anime('掌心')
-        if not search_response or not search_response.get('success'):
+        # 使用新版API获取作品列表
+        library_result = danmu_client.get_library_list()
+        if not library_result or not library_result.get('success'):
             return jsonify({
                 'success': False,
-                'message': f'搜索动漫失败: {search_response.get("errorMessage", "未知错误")}'
+                'message': f'获取作品列表失败: {library_result.get("errorMessage", "未知错误")}'
             })
         
-        # 获取搜索结果列表
-        search_results = search_response.get('animes', [])
-        if not search_results:
+        # 搜索匹配的动漫
+        animes = library_result.get('animes', [])
+        keyword = '凡人修仙传'
+        matched_anime = None
+        for anime in animes:
+            if keyword in anime.get('title', ''):
+                matched_anime = anime
+                break
+        
+        if not matched_anime:
             return jsonify({
                 'success': False,
-                'message': '搜索结果为空'
+                'message': f'未找到匹配的动漫: {keyword}',
+                'total_animes': len(animes)
             })
         
-        # 获取第一个搜索结果的详情
-        first_result = search_results[0]
-        bangumiId = first_result.get('bangumiId')
-        print(f"First result: {first_result}")
-        print(f"Anime ID: {bangumiId}")
-        if not bangumiId:
-            return jsonify({
-                'success': False,
-                'message': '搜索结果中未找到动漫ID'
-            })
+        # 使用新版API获取弹幕数据
+        danmaku_data = danmu_client.get_danmaku_by_title_and_episode(
+            title=matched_anime.get('title'),
+            season=matched_anime.get('season', 1),
+            episode_index=1
+        )
         
-        # 获取分集信息
-        bangumi_response = danmu_client.get_bangumi_details(bangumiId)
-        print(f"Bangumi response: {bangumi_response}")
-        if not bangumi_response or not bangumi_response.get('success'):
-            return jsonify({
-                'success': False,
-                'message': f'获取分集信息失败: {bangumi_response.get("errorMessage", "未知错误")}'
-            })
-        
-        bangumi_details = bangumi_response.get('bangumi', {})
-        print(f"Bangumi details: {bangumi_details}")
-        if not bangumi_details or 'episodes' not in bangumi_details:
-            return jsonify({
-                'success': False,
-                'message': '番剧详情中没有分集信息'
-            })
-        
-        episodes = bangumi_details['episodes']
-        episode_count = len(episodes)
-        
-        # 测试获取第一集的弹幕并转换为XML
         xml_file_path = None
         danmu_count = 0
         
-        if episodes:
-            first_episode = episodes[0]
-            episode_id = first_episode.get('episodeId')
-            if episode_id:
-                comments = danmu_client.get_episode_comments(episode_id)
-                if comments:
-                    # 获取弹幕数量
-                    if isinstance(comments, dict):
-                        danmu_count = comments.get('count', len(comments.get('comments', [])))
-                        comments_data = comments.get('comments', comments)
-                    elif isinstance(comments, list):
-                        danmu_count = len(comments)
-                        comments_data = comments
-                    else:
-                        danmu_count = 0
-                        comments_data = []
-                    
-                    # 转换为XML文件
-                    if comments_data:
-                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                        xml_filename = f'test_danmu_{timestamp}.xml'
-                        xml_file_path = os.path.join('test_subtitles', xml_filename)
-                        
-                        # 确保test_subtitles目录存在
-                        os.makedirs('test_subtitles', exist_ok=True)
-                        
-                        # 执行转换
-                        conversion_success = converter.convert_json_to_xml(
-                            json_data=comments_data,
-                            output_path=xml_file_path,
-                            episode_id=episode_id,
-                            use_dandan_format=True
-                        )
-                        
-                        if not conversion_success:
-                            xml_file_path = None
-                else:
-                    danmu_count = 0
-            else:
-                danmu_count = 0
-        else:
-            danmu_count = 0
+        if danmaku_data:
+            danmu_count = danmaku_data.get('count', 0)
+            comments_data = danmaku_data.get('comments', [])
+            
+            # 转换为XML文件
+            if comments_data:
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                xml_filename = f'test_danmu_{timestamp}.xml'
+                xml_file_path = os.path.join('test_subtitles', xml_filename)
+                
+                # 确保test_subtitles目录存在
+                os.makedirs('test_subtitles', exist_ok=True)
+                
+                # 执行转换
+                conversion_success = converter.convert_json_to_xml(
+                    json_data=comments_data,
+                    output_path=xml_file_path,
+                    episode_id=f"{matched_anime.get('title')}_S{matched_anime.get('season', 1)}E1",
+                    use_dandan_format=True,
+                    provider_name="dandanplay"
+                )
+                
+                if not conversion_success:
+                    xml_file_path = None
         
         # 如果没有获取到真实弹幕数据，则使用测试数据
         if danmu_count == 0:
@@ -416,8 +391,7 @@ def test_danmu():
         
         return jsonify({
             'success': True,
-            'search_result': f'找到 {len(search_results)} 个结果，第一个: {first_result.get("animeTitle", "未知")}',
-            'episode_count': episode_count,
+            'matched_anime': matched_anime.get('title', '未知') if matched_anime else None,
             'danmu_count': danmu_count,
             'xml_file': xml_file_path if xml_file_path else None,
             'xml_created': xml_file_path is not None
@@ -435,13 +409,38 @@ def test_danmu():
 
 @app.route('/api/create-test', methods=['POST'])
 def create_test():
-    test_dir = "./test_subtitles"
+    test_dir = "./test_videos"
     os.makedirs(test_dir, exist_ok=True)
     
-    test_file = os.path.join(test_dir, f"test_{datetime.now().strftime('%H%M%S')}.xml")
-    create_test_xml(test_file, "text")
+    # 获取当前测试视频集数
+    import glob
+    import re
+    
+    # 查找现有的测试视频文件
+    existing_files = glob.glob(os.path.join(test_dir, "凡人修仙传 - S01E* - 第 * 集.mp4"))
+    
+    # 确定下一集的集数
+    next_episode = 1
+    if existing_files:
+        # 从文件名中提取集数
+        episode_numbers = []
+        for file in existing_files:
+            match = re.search(r'S01E(\d+)', file)
+            if match:
+                episode_numbers.append(int(match.group(1)))
+        
+        if episode_numbers:
+            next_episode = max(episode_numbers) + 1
+    
+    # 创建测试视频文件名
+    test_file = os.path.join(test_dir, f"凡人修仙传 - S01E{next_episode} - 第 {next_episode} 集.mp4")
+    
+    # 创建测试视频文件
+    from utils import create_test_video
+    create_test_video(test_file, size_kb=2048)  # 创建2MB大小的测试视频文件
+    
     # 文件监听器会自动检测并记录日志，无需手动记录
-    return jsonify({"message": f"测试文件已创建: {test_file}", "success": True})
+    return jsonify({"message": f"测试视频文件已创建: {test_file}", "success": True})
 
 if __name__ == '__main__':
         # 启动时加载一次配置

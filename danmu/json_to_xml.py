@@ -81,7 +81,7 @@ class JsonToXmlConverter:
             
         return ET.tostring(root, encoding='unicode', xml_declaration=True)
     
-    def generate_dandan_xml(self, comments: List[dict]) -> str:
+    def generate_dandan_xml(self, comments: List[dict], provider_name: str = "aiqiyi") -> str:
         """
         根据弹幕字典列表生成 dandanplay 格式的 XML 字符串。
         完全仿照misaka_danmu_server的_generate_dandan_xml函数
@@ -93,7 +93,8 @@ class JsonToXmlConverter:
             '  <chatid>0</chatid>',
             '  <mission>0</mission>',
             f'  <maxlimit>{len(comments)}</maxlimit>',
-            '  <source>kuyun</source>'
+            '  <source>kuyun</source>',
+            f'  <sourceprovider>{provider_name}</sourceprovider>'
         ]
         
         for comment in comments:
@@ -128,7 +129,8 @@ class JsonToXmlConverter:
         json_data: Any, 
         output_path: str,
         episode_id: int = 0,
-        use_dandan_format: bool = True
+        use_dandan_format: bool = True,
+        provider_name: str = "aiqiyi"
     ) -> bool:
         """
         将json弹幕数据转换为xml文件
@@ -138,6 +140,7 @@ class JsonToXmlConverter:
             output_path: 输出xml文件路径
             episode_id: 分集ID
             use_dandan_format: 是否使用dandan格式（默认True）
+            provider_name: 弹幕源提供商名称（默认iqiyi）
             
         Returns:
             转换是否成功
@@ -180,9 +183,9 @@ class JsonToXmlConverter:
             
             # 生成XML
             if use_dandan_format:
-                xml_content = self.generate_dandan_xml(normalized_comments)
+                xml_content = self.generate_dandan_xml(normalized_comments, provider_name)
             else:
-                xml_content = self.generate_xml_from_comments(normalized_comments, episode_id)
+                xml_content = self.generate_xml_from_comments(normalized_comments, episode_id, provider_name)
             
             # 确保输出目录存在
             output_dir = os.path.dirname(output_path)
@@ -370,7 +373,8 @@ class JsonToXmlConverter:
             json_data=test_data,
             output_path=str(output_file),
             episode_id=1,
-            use_dandan_format=True
+            use_dandan_format=True,
+            provider_name="aiqiyi"
         )
         
         if success:

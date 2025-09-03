@@ -4,10 +4,13 @@ import os
 import json
 import logging
 import time
+import asyncio
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from .subtitle_utils import modify_xml
+# 延迟导入避免循环导入
+# from danmu.danmu_downloader import DanmuDownloader
 
 # 配置文件路径
 CONFIG_FILE = "./config.json"
@@ -15,7 +18,7 @@ CONFIG_FILE = "./config.json"
 # 默认配置
 DEFAULT_CONFIG = {
     "watch_dir": "./test_subtitles",
-    "file_extensions": [".xml"],
+    "file_extensions": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"],
     "wait_time": 0.5,
     "max_retries": 3,
     "retry_delay": 1.0,
@@ -29,11 +32,11 @@ DEFAULT_CONFIG = {
 _running = False
 _observer = None
 _processed_files = set()  # 只记录真正处理过的文件
-_checked_files = set()    # 记录所有检查过的文件，避免重复检查
 _config = None
 _logger = None
 _log_check_counter = 0  # 日志检查计数器
 _handler = None  # 全局处理器实例
+_danmu_downloader = None  # 弹幕下载器实例
 
 def load_config():
     """加载配置文件"""
@@ -146,8 +149,7 @@ class SubtitleHandler(FileSystemEventHandler):
     
     def on_created(self, event):
         if not event.is_directory and self._is_valid_file(event.src_path):
-            # 使用全局的已检查文件集合进行去重
-            if event.src_path not in _checked_files and event.src_path not in self.processing_files:
+            if event.src_path not in self.processing_files:
                 # 检查是否在短时间内有相同文件的事件，避免重复处理
                 if self._should_process_event(event.src_path, 'created'):
                     self.processing_files.add(event.src_path)
@@ -157,25 +159,11 @@ class SubtitleHandler(FileSystemEventHandler):
                     self.process_file(event.src_path)
                     self.processing_files.discard(event.src_path)
     
-    # def on_modified(self, event):
-    #     if not event.is_directory and self._is_valid_file(event.src_path):
-    #         # 避免重复处理同一个文件
-    #         if event.src_path not in self.processing_files:
-    #             # 检查是否在短时间内有相同文件的事件，避免重复处理
-    #             if self._should_process_event(event.src_path, 'modified'):
-    #                 self.processing_files.add(event.src_path)
-    #                 log_message('info', f"📝 检测到文件修改: {event.src_path}")
-    #                 # 等待3秒后处理，确保文件保存完成
-    #                 time.sleep(3.0)
-    #                 # 从已检查文件集合中移除，允许重新处理
-    #                 _checked_files.discard(event.src_path)
-    #                 self.process_file(event.src_path)
-    #                 self.processing_files.discard(event.src_path)
+    # 已移除on_modified方法，因为我们只关注视频文件的创建和移动事件
     
     def on_moved(self, event):
         if not event.is_directory and self._is_valid_file(event.dest_path):
-            # 使用全局的已检查文件集合进行去重
-            if event.dest_path not in _checked_files and event.dest_path not in self.processing_files:
+            if event.dest_path not in self.processing_files:
                 # 检查是否在短时间内有相同文件的事件，避免重复处理
                 if self._should_process_event(event.dest_path, 'moved'):
                     self.processing_files.add(event.dest_path)
@@ -213,12 +201,12 @@ class SubtitleHandler(FileSystemEventHandler):
         return True
     
     def _is_valid_file(self, filepath):
-        """检查文件是否符合处理条件"""
+        """检查文件是否为有效的视频文件"""
         # 检查文件扩展名
         file_ext = os.path.splitext(filepath)[1].lower()
-        valid_extensions = _config.get('file_extensions', [".xml"])
+        video_extensions = _config.get('file_extensions', [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"])
         
-        if file_ext not in valid_extensions:
+        if file_ext not in video_extensions:
             return False
         
         # 检查文件是否存在且可读
@@ -226,18 +214,8 @@ class SubtitleHandler(FileSystemEventHandler):
             if not os.path.isfile(filepath) or not os.access(filepath, os.R_OK):
                 return False
             
-            # 检查文件大小是否为0，如果是新创建的文件，等待一下再检查
-            file_size = os.path.getsize(filepath)
-            if file_size == 0:
-                # 等待一小段时间，防止文件正在写入中
-                time.sleep(0.1)
-                file_size = os.path.getsize(filepath)
-                
-                if file_size == 0:
-                    # 只有当文件不在处理列表中时才记录警告，避免重复日志
-                    if filepath not in self.processing_files:
-                        log_message('warning', f"⚠️ 跳过空文件: {filepath}")
-                    return False
+            # 等待一小段时间，防止文件正在写入中
+            time.sleep(0.1)
                 
             return True
         except Exception as e:
@@ -247,37 +225,40 @@ class SubtitleHandler(FileSystemEventHandler):
             return False
     
     def process_file(self, filepath):
-        """处理文件，包含重试机制"""
-        # 使用全局的已检查文件集合，避免重复处理
-        if filepath in _checked_files:
-            log_message('debug', f"⏭️ 文件已检查过，跳过: {filepath}")
-            return
-        
-        # 标记为已检查
-        _checked_files.add(filepath)
+        """处理视频文件，自动下载对应弹幕"""
         
         max_retries = _config.get('max_retries', 3)
         retry_delay = _config.get('retry_delay', 1.0)
         
         for attempt in range(max_retries):
             try:
-                log_message('debug', f"🔄 处理文件 (尝试 {attempt+1}/{max_retries}): {filepath}")
-                result = modify_xml(filepath)
+                log_message('debug', f"🔄 处理视频文件 (尝试 {attempt+1}/{max_retries}): {filepath}")
                 
-                if result is True:
+                # 初始化弹幕下载器
+                global _danmu_downloader
+                if _danmu_downloader is None:
+                    # 延迟导入避免循环导入
+                    from danmu.danmu_downloader import DanmuDownloader
+                    _danmu_downloader = DanmuDownloader(_config)
+                
+                # 异步处理弹幕下载
+                result = asyncio.run(self._process_video_async(filepath))
+                
+                if result and result.get('success'):
                     _processed_files.add(filepath)
-                    log_message('info', f"✅ 处理完成: {filepath}")
-                elif result is False:
-                    log_message('info', f"⏩ 文件已符合要求: {filepath}")
-                    # 跳过的文件不计入已处理文件统计
-                elif result == 'empty':
-                    log_message('warning', f"⚠️ 空白文件跳过: {filepath}")
-                elif isinstance(result, tuple) and result[0] == 'error':
-                    log_message('error', f"❌ 文件处理失败: {filepath} | {result[1]}")
+                    if result.get('skipped'):
+                        log_message('info', f"⏩ 弹幕文件已存在: {filepath}")
+                    else:
+                        log_message('info', f"✅ 弹幕下载完成: {filepath} -> {result.get('danmu_file', 'Unknown')}")
+                        series_name = result.get('series_name', '未知')
+                        episode = result.get('episode', '未知')
+                        log_message('info', f"📊 ({series_name} - 第{episode}集)，弹幕数量: {result.get('danmu_count', 0)} 条")
+                elif result:
+                    log_message('error', f"❌ 弹幕下载失败: {filepath} | {result.get('message', 'Unknown error')}")
                     # 处理失败的情况，继续重试机制
                     continue
-                elif result == 'error':
-                    log_message('error', f"❌ 文件处理失败: {filepath}")
+                else:
+                    log_message('error', f"❌ 弹幕下载失败: {filepath}")
                     # 处理失败的情况，继续重试机制
                     continue
                 
@@ -285,12 +266,21 @@ class SubtitleHandler(FileSystemEventHandler):
                 break
                 
             except Exception as e:
-                log_message('error', f"❌ 处理文件时出错 (尝试 {attempt+1}/{max_retries}): {filepath}, 错误: {e}")
+                log_message('error', f"❌ 处理视频文件时出错 (尝试 {attempt+1}/{max_retries}): {filepath}, 错误: {e}")
                 
                 # 如果不是最后一次尝试，则等待后重试
                 if attempt < max_retries - 1:
                     log_message('info', f"⏱️ 等待 {retry_delay} 秒后重试...")
                     time.sleep(retry_delay)
+    
+    async def _process_video_async(self, filepath):
+        """异步处理视频文件弹幕下载"""
+        global _danmu_downloader
+        try:
+            return await _danmu_downloader.process_video_file(filepath)
+        except Exception as e:
+            log_message('error', f"❌ 异步处理视频文件失败: {filepath}, 错误: {e}")
+            return None
 
 def start_watcher():
     """启动文件监听器"""
@@ -357,7 +347,7 @@ def start_watcher():
         for dir_path in valid_dirs:
             log_message('info', f"  - {dir_path}")
         log_message('info', f"🔍 监听器状态: 运行中")
-        log_message('info', f"📋 支持的文件类型: {_config.get('file_extensions', ['.xml'])}")
+        log_message('info', f"📋 支持的视频文件类型: {_config.get('file_extensions', ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'])}")
         
         return True
         
@@ -409,18 +399,16 @@ def get_processed_files():
 
 def clear_processed_files():
     """清空已处理文件记录"""
-    global _processed_files, _checked_files
+    global _processed_files
     count = len(_processed_files)
     _processed_files.clear()
-    _checked_files.clear()  # 同时清空已检查文件记录
-    log_message('info', f"🗑️ 已清空 {count} 个文件的处理记录，重置文件检查状态")
+    log_message('info', f"🗑️ 已清空 {count} 个文件的处理记录")
     return count
 
 def add_processed_file(filepath):
     """手动添加已处理文件到计数中"""
-    global _processed_files, _checked_files
+    global _processed_files
     _processed_files.add(filepath)
-    _checked_files.add(filepath)
     log_message('debug', f"📝 已添加到处理记录: {filepath}")
 
 def get_config():

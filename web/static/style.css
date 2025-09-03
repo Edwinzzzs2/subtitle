@@ -232,7 +232,7 @@ label {
     flex-shrink: 1;
 }
 
-input[type="text"], input[type="number"], select {
+input[type="text"], input[type="number"], input[type="password"], select {
     flex: 1;
     padding: 8px;
     border: 1px solid #e2e8f0;
@@ -249,7 +249,7 @@ input[type="checkbox"] {
     min-width: 0;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus, input[type="password"]:focus {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
