@@ -1,1 +1,3 @@
-2025-09-03 21:39:42,195 - subtitle_watcher - INFO - 🗑️ 已清空 1 个文件的处理记录
+2025-09-04 12:19:17,371 - subtitle_watcher - INFO - 🗑️ 已清空 0 个文件的处理记录
+2025-09-04 12:19:18,201 - subtitle_watcher - INFO - 📄 检测到新文件（创建）: ./test_videos\凡人修仙传 - S01E24 - 第 24 集.mp4
+2025-09-04 12:19:20,246 - subtitle_watcher - INFO - ✅ 弹幕下载完成: ./test_videos\凡人修仙传 - S01E24 - 第 24 集.mp4 -> test_videos\凡人修仙传 - S01E24 - 第 24 集_BilibiliID.xml -> 📊 (弹幕数量: 26023 条

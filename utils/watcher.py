@@ -17,7 +17,7 @@ CONFIG_FILE = "./config.json"
 
 # 默认配置
 DEFAULT_CONFIG = {
-    "watch_dir": "./test_subtitles",
+    "watch_dir": "./videos",
     "file_extensions": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"],
     "wait_time": 0.5,
     "max_retries": 3,
@@ -249,10 +249,17 @@ class SubtitleHandler(FileSystemEventHandler):
                     if result.get('skipped'):
                         log_message('info', f"⏩ 弹幕文件已存在: {filepath}")
                     else:
-                        log_message('info', f"✅ 弹幕下载完成: {filepath} -> {result.get('danmu_file', 'Unknown')}")
+                        # 获取下载的弹幕文件信息
+                        downloaded_files = result.get('downloaded_files', [])
+                        if downloaded_files:
+                            # 转换为相对路径，与视频路径显示方式保持一致
+                            file_paths = [os.path.relpath(f['file_path'], '.') for f in downloaded_files]
+                            provider_info = ', '.join(file_paths)
+                        else:
+                            provider_info = 'Unknown'
                         series_name = result.get('series_name', '未知')
                         episode = result.get('episode', '未知')
-                        log_message('info', f"📊 ({series_name} - 第{episode}集)，弹幕数量: {result.get('danmu_count', 0)} 条")
+                        log_message('info', f"✅ 弹幕下载完成: {filepath} -> {provider_info} -> 📊 (弹幕数量: {result.get('danmu_count', 0)} 条")
                 elif result:
                     log_message('error', f"❌ 弹幕下载失败: {filepath} | {result.get('message', 'Unknown error')}")
                     # 处理失败的情况，继续重试机制
@@ -302,7 +309,7 @@ def start_watcher():
         watch_dirs = _config.get('watch_dirs', [])
         if not watch_dirs:
             # 兼容旧配置格式
-            old_watch_dir = _config.get('watch_dir', './test_subtitles')
+            old_watch_dir = _config.get('watch_dir', './videos')
             watch_dirs = [old_watch_dir]
         
         if not watch_dirs:

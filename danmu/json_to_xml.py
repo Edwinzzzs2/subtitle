@@ -351,7 +351,7 @@ class JsonToXmlConverter:
         测试转换功能
         
         Args:
-            output_dir: 输出目录，默认为test_subtitles
+            output_dir: 输出目录，默认为videos
             
         Returns:
             测试是否成功
@@ -359,7 +359,7 @@ class JsonToXmlConverter:
         if output_dir is None:
             # 默认输出到项目的test_subtitles目录
             current_dir = Path(__file__).parent.parent
-            output_dir = current_dir / 'test_subtitles'
+            output_dir = current_dir / 'videos'
         
         output_dir = Path(output_dir)
         output_dir.mkdir(exist_ok=True)

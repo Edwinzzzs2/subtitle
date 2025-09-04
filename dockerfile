@@ -12,8 +12,8 @@ COPY . .
 # 创建日志目录
 RUN mkdir -p logs
 
-# 创建测试目录
-RUN mkdir -p test_subtitles
+# 创建视频存储目录
+RUN mkdir -p videos
 
 # 暴露应用端口
 EXPOSE 5000

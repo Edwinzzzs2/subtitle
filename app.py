@@ -184,7 +184,7 @@ def process_now():
         if not watch_dirs and config.get('watch_dir'):
             watch_dirs = [config.get('watch_dir')]
         if not watch_dirs:
-            watch_dirs = ['./test_subtitles']  # 默认目录
+            watch_dirs = ['./videos']  # 默认目录
         
         log_message('info', f"🚀 开始处理所有监控目录: {watch_dirs}")
         
@@ -361,10 +361,10 @@ def test_danmu():
             if comments_data:
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 xml_filename = f'test_danmu_{timestamp}.xml'
-                xml_file_path = os.path.join('test_subtitles', xml_filename)
+                xml_file_path = os.path.join('videos', xml_filename)
                 
-                # 确保test_subtitles目录存在
-                os.makedirs('test_subtitles', exist_ok=True)
+                # 确保videos目录存在
+                os.makedirs('videos', exist_ok=True)
                 
                 # 执行转换
                 conversion_success = converter.convert_json_to_xml(
@@ -381,12 +381,12 @@ def test_danmu():
         # 如果没有获取到真实弹幕数据，则使用测试数据
         if danmu_count == 0:
             # 使用测试数据
-            test_success = converter.test_conversion('test_subtitles')
+            test_success = converter.test_conversion('videos')
             if test_success:
                 # 查找刚创建的测试文件
-                test_files = [f for f in os.listdir('test_subtitles') if f.startswith('test_danmu_') and f.endswith('.xml')]
+                test_files = [f for f in os.listdir('videos') if f.startswith('test_danmu_') and f.endswith('.xml')]
                 if test_files:
-                    xml_file_path = os.path.join('test_subtitles', sorted(test_files)[-1])  # 获取最新的文件
+                    xml_file_path = os.path.join('videos', sorted(test_files)[-1])  # 获取最新的文件
                     danmu_count = 5  # 测试数据有5条弹幕
         
         return jsonify({
