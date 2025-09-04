@@ -22,6 +22,7 @@ RUN mkdir -p logs
 
 # 创建视频存储目录
 RUN mkdir -p videos
+RUN mkdir -p test_videos
 
 # 暴露应用端口
 EXPOSE 5000
