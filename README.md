@@ -5,13 +5,9 @@ services:
     ports:
       - "5000:5000"
     volumes:
-     # 视频目录挂载
       - ./videos:/app/videos
       - ./test_videos:/app/test_videos
-      # 配置文件持久化
-      - ./config.json:/app/config.json
-      # 日志目录持久化
-      - ./logs:/app/logs
+      - ./config:/app/config
     environment:
       - FLASK_ENV=production
     restart: unless-stopped

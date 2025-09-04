@@ -13,7 +13,7 @@ from .subtitle_utils import modify_xml
 # from danmu.danmu_downloader import DanmuDownloader
 
 # 配置文件路径
-CONFIG_FILE = "./config.json"
+CONFIG_FILE = "./config/config.json"
 
 # 默认配置
 DEFAULT_CONFIG = {

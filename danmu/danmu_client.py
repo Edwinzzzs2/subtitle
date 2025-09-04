@@ -21,7 +21,7 @@ class DanmuClient:
     SOURCE_EPISODES_ENDPOINT = "/api/control/library/source"  # 获取源下分集列表
     DANMAKU_ENDPOINT = "/api/control/danmaku"  # 获取弹幕数据
     
-    def __init__(self, config_path: str = "config.json", base_url: str = None):
+    def __init__(self, config_path: str = "config/config.json", base_url: str = None):
         """初始化弹幕客户端
         
         Args:
