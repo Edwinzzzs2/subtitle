@@ -17,11 +17,11 @@ from xml.etree import ElementTree as ET
 
 class JsonToXmlConverter:
     """json弹幕转xml转换器"""
-    
+
     def __init__(self):
         """初始化转换器"""
         self.logger = logging.getLogger(__name__)
-        
+
     def clean_xml_string(self, xml_string: str) -> str:
         """
         移除XML字符串中的无效字符以防止解析错误。
@@ -33,29 +33,29 @@ class JsonToXmlConverter:
             r'[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]'
         )
         return invalid_xml_char_re.sub('', xml_string)
-    
+
     def xml_escape(self, text: str) -> str:
         """
         转义XML中的特殊字符
         """
         if not text:
             return ''
-        
+
         # 先清理无效字符
         text = self.clean_xml_string(text)
-        
+
         # 转义XML特殊字符
         text = text.replace('&', '&amp;')
         text = text.replace('<', '&lt;')
         text = text.replace('>', '&gt;')
         text = text.replace('"', '&quot;')
         text = text.replace("'", '&apos;')
-        
+
         return text
-    
+
     def generate_xml_from_comments(
-        self, 
-        comments: List[Dict[str, Any]], 
+        self,
+        comments: List[Dict[str, Any]],
         episode_id: int = 0,
         provider_name: Optional[str] = "misaka",
         chat_server: Optional[str] = "danmaku.misaka.org"
@@ -73,14 +73,14 @@ class JsonToXmlConverter:
         # 新增字段
         ET.SubElement(root, 'sourceprovider').text = provider_name
         ET.SubElement(root, 'datasize').text = str(len(comments))
-        
+
         for comment in comments:
             p_attr = str(comment.get('p', ''))
             d = ET.SubElement(root, 'd', p=p_attr)
             d.text = comment.get('m', '')
-            
+
         return ET.tostring(root, encoding='unicode', xml_declaration=True)
-    
+
     def generate_dandan_xml(self, comments: List[dict], provider_name: str = "aiqiyi") -> str:
         """
         根据弹幕字典列表生成 dandanplay 格式的 XML 字符串。
@@ -99,12 +99,12 @@ class JsonToXmlConverter:
             '    <real_name>0</real_name>',
             '    <source>k-v</source>'
         ]
-        
+
         for comment in comments:
             content = self.xml_escape(comment.get('m', ''))
             p_attr_str = comment.get('p', '0,1,25,16777215')
             p_parts = p_attr_str.split(',')
-            
+
             # 强制修复逻辑：确保 p 属性的格式为 时间,模式,字体大小,颜色,...
             core_parts_end_index = len(p_parts)
             for i, part in enumerate(p_parts):
@@ -123,13 +123,13 @@ class JsonToXmlConverter:
 
             final_p_attr = ','.join(core_parts + optional_parts)
             xml_parts.append(f'  <d p="{final_p_attr}">{content}</d>')
-            
+
         xml_parts.append('</i>')
         return '\n'.join(xml_parts)
-    
+
     def convert_json_to_xml(
-        self, 
-        json_data: Any, 
+        self,
+        json_data: Any,
         output_path: str,
         episode_id: int = 0,
         use_dandan_format: bool = True,
@@ -137,14 +137,14 @@ class JsonToXmlConverter:
     ) -> bool:
         """
         将json弹幕数据转换为xml文件
-        
+
         Args:
             json_data: json弹幕数据，可以是字符串、字典或列表
             output_path: 输出xml文件路径
             episode_id: 分集ID
             use_dandan_format: 是否使用dandan格式（默认True）
             provider_name: 弹幕源提供商名称（默认iqiyi）
-            
+
         Returns:
             转换是否成功
         """
@@ -158,10 +158,10 @@ class JsonToXmlConverter:
                     return False
             else:
                 data = json_data
-            
+
             # 提取弹幕列表
             comments = []
-            
+
             if isinstance(data, list):
                 # 直接是弹幕列表
                 comments = data
@@ -176,48 +176,52 @@ class JsonToXmlConverter:
                 else:
                     # 尝试直接使用整个字典作为单条弹幕
                     comments = [data]
-            
+
             if not comments:
                 self.logger.warning("未找到弹幕数据")
                 return False
-            
+
             # 标准化弹幕格式
             normalized_comments = self._normalize_comments(comments)
-            
+
             # 生成XML
             if use_dandan_format:
-                xml_content = self.generate_dandan_xml(normalized_comments, provider_name)
+                xml_content = self.generate_dandan_xml(
+                    normalized_comments, provider_name)
             else:
-                xml_content = self.generate_xml_from_comments(normalized_comments, episode_id, provider_name)
-            
+                xml_content = self.generate_xml_from_comments(
+                    normalized_comments, episode_id, provider_name)
+
             # 确保输出目录存在
             output_dir = os.path.dirname(output_path)
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
-            
+
             # 写入文件
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(xml_content)
-            
-            self.logger.info(f"成功转换 {len(normalized_comments)} 条弹幕到 {output_path}")
+
+            self.logger.info(
+                f"成功转换 {len(normalized_comments)} 条弹幕到 {output_path}")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"转换失败: {e}")
             return False
-    
+
     def _normalize_comments(self, comments: List[Any]) -> List[Dict[str, Any]]:
         """
         标准化弹幕数据格式
         将各种可能的弹幕格式转换为统一的内部格式
         """
         normalized = []
-        
+
         for i, comment in enumerate(comments):
             try:
                 if isinstance(comment, dict):
                     # 已经是字典格式
-                    normalized_comment = self._normalize_single_comment(comment)
+                    normalized_comment = self._normalize_single_comment(
+                        comment)
                 elif isinstance(comment, (list, tuple)):
                     # 数组格式，尝试解析
                     normalized_comment = self._normalize_array_comment(comment)
@@ -227,16 +231,16 @@ class JsonToXmlConverter:
                         'p': f'{i * 5},1,25,16777215,0,0,0,{i}',
                         'm': str(comment)
                     }
-                
+
                 if normalized_comment:
                     normalized.append(normalized_comment)
-                    
+
             except Exception as e:
                 self.logger.warning(f"跳过格式错误的弹幕 {i}: {e}")
                 continue
-        
+
         return normalized
-    
+
     def _normalize_single_comment(self, comment: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         标准化单条弹幕（字典格式）
@@ -247,10 +251,10 @@ class JsonToXmlConverter:
             if key in comment:
                 text = str(comment[key])
                 break
-        
+
         if not text:
             return None
-        
+
         # 提取或构造p属性
         if 'p' in comment:
             p_attr = str(comment['p'])
@@ -264,14 +268,14 @@ class JsonToXmlConverter:
             pool = comment.get('pool', 0)
             user_id = comment.get('user_id', comment.get('uid', 0))
             cid = comment.get('cid', comment.get('id', 0))
-            
+
             p_attr = f'{time_sec},{mode},{fontsize},{color},{timestamp},{pool},{user_id},{cid}'
-        
+
         return {
             'p': p_attr,
             'm': text
         }
-    
+
     def _normalize_array_comment(self, comment: List[Any]) -> Optional[Dict[str, Any]]:
         """
         标准化数组格式的弹幕
@@ -279,10 +283,10 @@ class JsonToXmlConverter:
         """
         if len(comment) < 2:
             return None
-        
+
         # 假设最后一个元素是弹幕文本
         text = str(comment[-1])
-        
+
         # 构造p属性
         if len(comment) >= 5:
             # 完整格式
@@ -294,14 +298,14 @@ class JsonToXmlConverter:
             mode = comment[1] if len(comment) > 1 else 1
             fontsize = comment[2] if len(comment) > 2 else 25
             color = comment[3] if len(comment) > 3 else 16777215
-            
+
             p_attr = f'{time_sec},{mode},{fontsize},{color},0,0,0,0'
-        
+
         return {
             'p': p_attr,
             'm': text
         }
-    
+
     def create_test_json_data(self) -> List[Dict[str, Any]]:
         """
         创建测试用的json弹幕数据
@@ -343,16 +347,16 @@ class JsonToXmlConverter:
                 'text': '测试中文弹幕：你好世界！'
             }
         ]
-        
+
         return test_comments
-    
+
     def test_conversion(self, output_dir: str = None) -> bool:
         """
         测试转换功能
-        
+
         Args:
             output_dir: 输出目录，默认为videos
-            
+
         Returns:
             测试是否成功
         """
@@ -360,17 +364,17 @@ class JsonToXmlConverter:
             # 默认输出到项目的test_subtitles目录
             current_dir = Path(__file__).parent.parent
             output_dir = current_dir / 'videos'
-        
+
         output_dir = Path(output_dir)
         output_dir.mkdir(exist_ok=True)
-        
+
         # 生成测试数据
         test_data = self.create_test_json_data()
-        
+
         # 生成文件名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = output_dir / f'test_danmu_{timestamp}.xml'
-        
+
         # 执行转换
         success = self.convert_json_to_xml(
             json_data=test_data,
@@ -379,14 +383,14 @@ class JsonToXmlConverter:
             use_dandan_format=True,
             provider_name="aiqiyi"
         )
-        
+
         if success:
             self.logger.info(f"测试成功！XML文件已保存到: {output_file}")
             print(f"测试成功！XML文件已保存到: {output_file}")
         else:
             self.logger.error("测试失败！")
             print("测试失败！")
-        
+
         return success
 
 
@@ -397,10 +401,10 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    
+
     # 创建转换器
     converter = JsonToXmlConverter()
-    
+
     # 执行测试
     print("开始测试json转xml功能...")
     converter.test_conversion()

@@ -272,13 +272,25 @@ def danmu_config():
 def test_danmu():
     """测试弹幕功能（新版API）"""
     try:
-        from danmu import DanmuClient
         from danmu.json_to_xml import JsonToXmlConverter
         import os
         from datetime import datetime
         
-        # 创建弹幕客户端实例
-        danmu_client = DanmuClient()
+        # 尝试获取全局下载器实例
+        from utils.watcher import get_global_downloader
+        downloader = get_global_downloader()
+        
+        # 如果全局实例不存在，创建新的实例
+        if downloader is None:
+            config = get_config()
+            from danmu.danmu_downloader import DanmuDownloader
+            downloader = DanmuDownloader(config)
+            log_message('debug', "测试弹幕使用新创建的下载器实例")
+        else:
+            log_message('debug', "测试弹幕使用全局下载器实例")
+        
+        # 获取弹幕客户端
+        danmu_client = downloader.danmu_client
         
         # 创建json转xml转换器
         converter = JsonToXmlConverter()
@@ -371,6 +383,69 @@ def test_danmu():
             'message': error_msg
         }), 500
 
+@app.route('/api/clear-cache', methods=['POST'])
+def clear_cache():
+    """清除弹幕缓存"""
+    try:
+        # 尝试获取全局下载器实例
+        from utils.watcher import get_global_downloader
+        downloader = get_global_downloader()
+        
+        # 如果全局实例不存在，创建新的实例
+        if downloader is None:
+            config = get_config()
+            from danmu.danmu_downloader import DanmuDownloader
+            downloader = DanmuDownloader(config)
+            log_message('debug', "使用新创建的下载器实例清除缓存")
+        else:
+            log_message('debug', "使用全局下载器实例清除缓存")
+        
+        downloader.clear_cache()
+        
+        log_message('info', "弹幕缓存已清除")
+        return jsonify({
+            "success": True,
+            "message": "弹幕缓存已清除"
+        })
+        
+    except Exception as e:
+        log_message('error', f"清除缓存失败: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"清除缓存失败: {str(e)}"
+        })
+
+@app.route('/api/cache-stats', methods=['GET'])
+def get_cache_stats():
+    """获取缓存统计信息"""
+    try:
+        # 尝试获取全局下载器实例
+        from utils.watcher import get_global_downloader
+        downloader = get_global_downloader()
+        
+        # 如果全局实例不存在，创建新的实例
+        if downloader is None:
+            config = get_config()
+            from danmu.danmu_downloader import DanmuDownloader
+            downloader = DanmuDownloader(config)
+            log_message('debug', "使用新创建的下载器实例获取缓存统计")
+        else:
+            log_message('debug', "使用全局下载器实例获取缓存统计")
+        
+        cache_stats = downloader.get_cache_stats()
+        
+        return jsonify({
+            "success": True,
+            "cache_stats": cache_stats
+        })
+        
+    except Exception as e:
+        log_message('error', f"获取缓存统计失败: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"获取缓存统计失败: {str(e)}"
+        })
+
 @app.route('/api/create-test', methods=['POST'])
 def create_test():
     test_dir = "./test_videos"
@@ -407,9 +482,43 @@ def create_test():
     return jsonify({"message": f"测试视频文件已创建: {test_file}", "success": True})
 
 if __name__ == '__main__':
-        # 启动时加载一次配置
+    # 启动时加载一次配置
     load_config()
     setup_logger()
+    
+    # 配置所有相关模块的日志器
+    import logging
+    
+    # 获取配置
+    config = get_config()
+    log_level = getattr(logging, config.get('log_level', 'INFO'))
+    
+    # 配置danmu模块的日志器
+    danmu_logger = logging.getLogger('danmu.danmu_client')
+    danmu_logger.setLevel(log_level)
+    
+    # 如果danmu_logger没有处理器，添加与watcher相同的处理器
+    if not danmu_logger.handlers:
+        # 控制台处理器
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        
+        # 文件处理器
+        import os
+        os.makedirs('logs', exist_ok=True)
+        file_handler = logging.FileHandler('logs/watcher.log', encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        
+        # 格式化器
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        console_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
+        
+        danmu_logger.addHandler(console_handler)
+        if config.get('enable_logging', True):
+            danmu_logger.addHandler(file_handler)
     
     # 启动时自动开始监听
     log_message('info', "程序启动，自动开启文件监听功能")
