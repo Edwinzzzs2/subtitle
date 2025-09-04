@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify, send_from_directory
 import threading
 import os
+import asyncio
 from datetime import datetime
 from utils import (
     start_watcher, stop_watcher, restart_watcher, is_running, 
     get_processed_files, clear_processed_files, get_config, save_config,
     update_config, get_status, log_message, load_config, setup_logger,
-    add_processed_file, process_directory, modify_xml, create_test_xml
+    add_processed_file, modify_xml, create_test_xml
 )
 from version import get_version_info
 
@@ -17,7 +18,7 @@ app = Flask(__name__, static_folder='web/static', template_folder='web/static')
 
 def process_directory_with_logging(directory):
     """
-    处理指定目录下的所有XML文件，并实时记录日志
+    处理指定目录下的所有视频文件，下载对应弹幕
     返回处理的文件数量
     """
     if not os.path.exists(directory):
@@ -26,37 +27,56 @@ def process_directory_with_logging(directory):
     count = 0
     total_files = 0
     
+    # 获取支持的视频文件扩展名
+    config = get_config()
+    file_extensions = config.get('file_extensions', ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'])
+    
     # 先统计总文件数
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith('.xml'):
+            if any(file.lower().endswith(ext.lower()) for ext in file_extensions):
                 total_files += 1
     
-    log_message('info', f"📊 发现 {total_files} 个XML文件待处理")
+    log_message('info', f"📊 发现 {total_files} 个视频文件待处理")
+    
+    # 初始化弹幕下载器
+    from danmu.danmu_downloader import DanmuDownloader
+    danmu_downloader = DanmuDownloader(config)
     
     # 处理文件
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith('.xml'):
+            if any(file.lower().endswith(ext.lower()) for ext in file_extensions):
                 filepath = os.path.join(root, file)
                 try:
-                    log_message('info', f"🔄 正在处理: {filepath}")
-                    result = modify_xml(filepath, source=None)  # 使用默认弹幕源
+                    log_message('info', f"🔄 正在处理视频文件: {filepath}")
                     
-                    if result is True:
+                    # 异步处理弹幕下载
+                    result = asyncio.run(danmu_downloader.process_video_file(filepath))
+                    
+                    if result and result.get('success'):
                         count += 1
                         add_processed_file(filepath)  # 添加到处理计数中
-                        log_message('info', f"✅ 处理完成: {filepath}")
-                    elif result is False:
-                        log_message('info', f"⏩ 文件已符合要求: {filepath}")
-                    elif result == 'empty':
-                        log_message('warning', f"⚠️ 空白文件跳过: {filepath}")
-                    elif isinstance(result, tuple) and result[0] == 'error':
-                        log_message('error', f"❌ 文件处理失败: {filepath} | {result[1]}")
-                    elif result == 'error':
-                        log_message('error', f"❌ 文件处理失败: {filepath}")
+                        if result.get('skipped'):
+                            log_message('info', f"⏩ 弹幕文件已存在: {filepath}")
+                        else:
+                            # 获取下载的弹幕文件信息
+                            downloaded_files = result.get('downloaded_files', [])
+                            if downloaded_files:
+                                # 转换为相对路径，与视频路径显示方式保持一致
+                                file_paths = [os.path.relpath(f['file_path'], '.') for f in downloaded_files]
+                                provider_info = ', '.join(file_paths)
+                            else:
+                                provider_info = 'Unknown'
+                            series_name = result.get('series_name', '未知')
+                            episode = result.get('episode', '未知')
+                            log_message('info', f"✅ 弹幕下载完成: {filepath} -> {provider_info} -> 📊 (弹幕数量: {result.get('danmu_count', 0)} 条")
+                    elif result:
+                        log_message('error', f"❌ 弹幕下载失败: {filepath} | {result.get('message', 'Unknown error')}")
+                    else:
+                        log_message('error', f"❌ 弹幕下载失败: {filepath}")
                 except Exception as e:
-                    log_message('error', f"❌ 处理文件失败: {filepath}, 错误: {e}")
+                    log_message('error', f"❌ 处理视频文件失败: {filepath}, 错误: {e}")
     
     return count
 
@@ -182,7 +202,7 @@ def clear_logs():
 
 @app.route('/api/process-now', methods=['POST'])
 def process_now():
-    """立即处理所有监控目录下的文件"""
+    """立即处理所有监控目录下的视频文件，下载对应弹幕"""
     try:
         # 获取当前配置的监控目录
         config = get_config()
@@ -190,7 +210,7 @@ def process_now():
         if not watch_dirs:
             watch_dirs = ['./videos']  # 默认目录
         
-        log_message('info', f"🚀 开始处理所有监控目录: {watch_dirs}")
+        log_message('info', f"🚀 开始处理所有监控目录下的视频文件: {watch_dirs}")
         
         total_count = 0
         processed_dirs = []
@@ -198,17 +218,17 @@ def process_now():
         # 处理每个监控目录
         for directory in watch_dirs:
             if os.path.exists(directory):
-                log_message('info', f"📁 处理目录: {directory}")
+                log_message('info', f"📁 处理目录中的视频文件: {directory}")
                 count = process_directory_with_logging(directory)
                 total_count += count
                 processed_dirs.append(f"{directory}({count}个文件)")
             else:
                 log_message('warning', f"⚠️ 目录不存在，跳过: {directory}")
         
-        log_message('info', f"✅ 处理完成，共处理 {total_count} 个文件")
+        log_message('info', f"✅ 处理完成，共处理 {total_count} 个视频文件")
         
         return jsonify({
-            "message": f"处理完成，共处理 {total_count} 个文件\n处理的目录: {', '.join(processed_dirs)}", 
+            "message": f"处理完成，共处理 {total_count} 个视频文件\n处理的目录: {', '.join(processed_dirs)}", 
             "success": True,
             "count": total_count,
             "processed_dirs": processed_dirs

@@ -95,35 +95,7 @@ def modify_xml(filepath, source=None):
     except Exception as e:
         return ('error', f"处理失败: {type(e).__name__}: {e}")
 
-def process_directory(directory, source=None):
-    """
-    处理指定目录下的所有XML文件
-    
-    Args:
-        directory: 要处理的目录路径
-        source: 弹幕源类型 ('iqiyi', 'bilibili', 'tencent', 'youku')
-    
-    Returns:
-        处理的文件数量
-    """
-    if not os.path.exists(directory):
-        raise Exception(f"目录不存在: {directory}")
-    
-    count = 0
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.xml'):
-                filepath = os.path.join(root, file)
-                try:
-                    result = modify_xml(filepath, source)
-                    if result is True:
-                        count += 1
-                    elif isinstance(result, tuple) and result[0] == 'error':
-                        print(f"处理文件失败: {filepath}, 错误: {result[1]}")
-                except Exception as e:
-                    print(f"处理文件失败: {filepath}, 错误: {e}")
-    
-    return count
+# 已移除未使用的 process_directory 函数，改用 app.py 中的 process_directory_with_logging
 
 def create_test_xml(filepath, body_type="text"):
     """
