@@ -1,8 +1,21 @@
+"""弹幕下载器模块
+
+该模块提供自动弹幕下载功能，根据视频文件名自动搜索和下载对应弹幕。
+主要功能：
+1. 解析视频文件名，提取剧集信息
+2. 搜索匹配的动漫/剧集
+3. 获取分集信息
+4. 下载弹幕数据
+5. 转换为XML格式并保存
+"""
+
 import sys
 import os
+import re
 import asyncio
 import logging
 from pathlib import Path
+from typing import Dict, List, Optional, Any, Union
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,9 +29,26 @@ from config import DANMU_SOURCES, DEFAULT_SOURCE
 logger = logging.getLogger('danmu_downloader')
 
 class DanmuDownloader:
-    """自动弹幕下载器，根据视频文件自动搜索和下载弹幕"""
+    """自动弹幕下载器，根据视频文件自动搜索和下载弹幕
     
-    def __init__(self, config=None):
+    该类提供完整的弹幕下载流程，包括视频文件解析、动漫搜索、分集匹配和弹幕下载等功能。
+    支持多个弹幕源，可以同时下载多个源的弹幕数据。
+    
+    Attributes:
+        config: 配置字典，包含API密钥等设置
+        danmu_client: 弹幕API客户端
+        xml_converter: JSON到XML的转换器
+        video_parser: 视频文件解析器
+        danmu_sources: 支持的弹幕源列表
+        default_source: 默认弹幕源
+    """
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """初始化弹幕下载器
+        
+        Args:
+            config: 配置字典，包含API密钥等设置
+        """
         self.config = config or {}
         self.danmu_client = DanmuClient()
         self.xml_converter = JsonToXmlConverter()
@@ -36,15 +66,30 @@ class DanmuDownloader:
         # 默认使用爱奇艺作为弹幕源
         self.default_source = DEFAULT_SOURCE
     
-    async def process_video_file(self, video_filepath):
+    async def process_video_file(self, video_filepath: str) -> Dict[str, Any]:
         """
         处理单个视频文件，自动下载对应弹幕
+        
+        完整的处理流程包括：
+        1. 解析视频文件名，提取剧集信息
+        2. 搜索匹配的动漫/剧集
+        3. 获取分集信息
+        4. 下载弹幕数据
+        5. 转换为XML格式并保存
         
         Args:
             video_filepath: 视频文件路径
             
         Returns:
-            dict: 处理结果
+            Dict[str, Any]: 处理结果，包含以下字段：
+                - success: 是否成功
+                - message: 处理结果消息
+                - video_file: 视频文件路径
+                - downloaded_files: 下载的弹幕文件列表（成功时）
+                - failed_sources: 失败的弹幕源列表（如果有）
+                - series_name: 剧集名称（成功时）
+                - episode: 集数（成功时）
+                - danmu_count: 弹幕数量（成功时）
         """
         try:
             logger.info(f"开始处理视频文件: {video_filepath}")
@@ -166,16 +211,18 @@ class DanmuDownloader:
                 'video_file': video_filepath
             }
     
-    def _search_anime(self, series_name, season=None):
+    def _search_anime(self, series_name: str, season: Optional[int] = None) -> Optional[Dict[str, Any]]:
         """
         搜索动漫/剧集（使用新版API，支持季数匹配）
+        
+        根据剧集名称搜索匹配的动漫/剧集，支持季数精确匹配。
         
         Args:
             series_name: 剧集名称
             season: 季数（可选，如果提供则精确匹配季数）
             
         Returns:
-            dict: 搜索结果或None
+            Optional[Dict[str, Any]]: 搜索结果或None（未找到匹配时）
         """
         try:
             logger.info(f"搜索动漫: {series_name}, 季数: {season}")

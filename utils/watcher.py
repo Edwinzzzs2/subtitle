@@ -3,12 +3,10 @@ import threading
 import os
 import json
 import logging
-import time
 import asyncio
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from .subtitle_utils import modify_xml
 # 延迟导入避免循环导入
 # from danmu.danmu_downloader import DanmuDownloader
 

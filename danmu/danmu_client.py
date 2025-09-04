@@ -8,18 +8,30 @@
 import json
 import logging
 import requests
+import time
 from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin
 
 
 class DanmuClient:
-    """弹幕API客户端类"""
+    """弹幕API客户端类
+    
+    支持缓存机制，避免重复请求相同的数据：
+    - 作品列表缓存（默认5分钟有效期）
+    - 弹幕源缓存（默认10分钟有效期）
+    - 分集列表缓存（默认10分钟有效期）
+    """
     
     # 新版API接口路径
     LIBRARY_ENDPOINT = "/api/control/library"  # 获取作品列表
     ANIME_SOURCES_ENDPOINT = "/api/control/library/anime"  # 获取作品弹幕源
     SOURCE_EPISODES_ENDPOINT = "/api/control/library/source"  # 获取源下分集列表
     DANMAKU_ENDPOINT = "/api/control/danmaku"  # 获取弹幕数据
+    
+    # 缓存配置
+    LIBRARY_CACHE_TTL = 300  # 作品列表缓存5分钟
+    SOURCES_CACHE_TTL = 600  # 弹幕源缓存10分钟
+    EPISODES_CACHE_TTL = 600  # 分集列表缓存10分钟
     
     def __init__(self, config_path: str = "config/config.json", base_url: str = None):
         """初始化弹幕客户端
@@ -41,6 +53,11 @@ class DanmuClient:
         
         # 设置API Key认证
         self.api_key = self.config.get('token', '')
+        
+        # 初始化缓存
+        self._library_cache = {'data': None, 'timestamp': 0}
+        self._sources_cache = {}  # {anime_id: {'data': sources, 'timestamp': timestamp}}
+        self._episodes_cache = {}  # {source_id: {'data': episodes, 'timestamp': timestamp}}
     
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件
