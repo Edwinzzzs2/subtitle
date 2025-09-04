@@ -99,6 +99,136 @@ class DanmuDownloader:
         self.use_cache = enabled
         logger.info(f"缓存已{'启用' if enabled else '禁用'}")
 
+    def process_video_file_sync(self, video_filepath: str) -> Dict[str, Any]:
+        """同步版本的视频文件处理方法，用于在子线程中调用"""
+        try:
+            logger.info(f"开始处理视频文件: {video_filepath}")
+
+            # 1. 解析视频文件名
+            video_info = self.video_parser.parse_video_filename(video_filepath)
+            if not video_info:
+                return {
+                    'success': False,
+                    'message': '无法解析视频文件名',
+                    'video_file': video_filepath
+                }
+
+            logger.debug(f"视频解析结果: {video_info}")
+
+            # 2. 获取弹幕文件路径（强制覆盖模式）
+            danmu_filepath = self.video_parser.get_danmu_filepath(
+                video_info,
+                self.danmu_sources[self.default_source]
+            )
+
+            if os.path.exists(danmu_filepath):
+                logger.debug(f"弹幕文件已存在，将强制覆盖: {danmu_filepath}")
+
+            # 3. 搜索动漫/剧集（传递季数信息）
+            search_result = self._search_anime(
+                video_info['series_name'], video_info.get('season'))
+            if not search_result:
+                return {
+                    'success': False,
+                    'message': f"未找到匹配的动漫: {video_info['series_name']} 第{video_info.get('season', '?')}季",
+                    'video_file': video_filepath
+                }
+
+            # 4. 获取分集信息
+            all_episodes = self._get_episodes(search_result['animeId'])
+            if not all_episodes:
+                return {
+                    'success': False,
+                    'message': '未找到分集信息',
+                    'video_file': video_filepath
+                }
+
+            # 5. 为每个源下载弹幕
+            downloaded_files = []
+            failed_sources = []
+
+            for provider_name, episodes in all_episodes.items():
+                try:
+                    logger.debug(f"处理弹幕源: {provider_name}")
+
+                    # 匹配对应集数
+                    target_episode = self._match_episode(
+                        episodes, video_info['episode'])
+                    if not target_episode:
+                        logger.warning(
+                            f"{provider_name} 未找到第{video_info['episode']}集")
+                        failed_sources.append(f"{provider_name}: 未找到对应集数")
+                        continue
+
+                    # 下载弹幕
+                    danmu_data = self._download_danmu(
+                        target_episode['episodeId'])
+                    if not danmu_data:
+                        logger.warning(f"{provider_name} 弹幕下载失败")
+                        failed_sources.append(f"{provider_name}: 弹幕下载失败")
+                        continue
+
+                    # 根据providerName更新弹幕文件路径
+                    danmu_filepath = self._get_correct_danmu_filepath(
+                        video_info, provider_name, video_filepath)
+
+                    # 转换为XML并保存，使用ID格式的provider名称
+                    xml_provider_name = DANMU_SOURCES.get(
+                        provider_name.lower(), f"{provider_name.capitalize()}ID")
+                    xml_result = self._save_danmu_xml(
+                        danmu_data, danmu_filepath, xml_provider_name)
+                    if not xml_result:
+                        logger.warning(f"{provider_name} XML文件保存失败")
+                        failed_sources.append(f"{provider_name}: XML保存失败")
+                        continue
+
+                    downloaded_files.append({
+                        'provider': provider_name,
+                        'file_path': danmu_filepath,
+                        'danmu_count': danmu_data.get('count', 0) if isinstance(danmu_data, dict) else 0
+                    })
+                    logger.debug(f"{provider_name} 弹幕处理完成: {danmu_filepath}")
+
+                except Exception as e:
+                    logger.error(f"处理 {provider_name} 时出错: {e}")
+                    failed_sources.append(f"{provider_name}: {str(e)}")
+
+            # 6. 返回结果
+            if downloaded_files:
+                success_message = f"成功下载 {len(downloaded_files)} 个弹幕源"
+                if failed_sources:
+                    success_message += f"，失败 {len(failed_sources)} 个源"
+
+                # 计算总弹幕数量
+                total_danmu_count = sum(file_info.get('danmu_count', 0)
+                                        for file_info in downloaded_files)
+
+                return {
+                    'success': True,
+                    'message': success_message,
+                    'video_file': video_filepath,
+                    'downloaded_files': downloaded_files,
+                    'failed_sources': failed_sources,
+                    'series_name': video_info['series_name'],
+                    'episode': video_info['episode'],
+                    'danmu_count': total_danmu_count
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f"所有弹幕源下载失败: {'; '.join(failed_sources)}",
+                    'video_file': video_filepath,
+                    'failed_sources': failed_sources
+                }
+
+        except Exception as e:
+            logger.error(f"处理视频文件时出错: {video_filepath}, 错误: {e}")
+            return {
+                'success': False,
+                'message': f'处理失败: {str(e)}',
+                'video_file': video_filepath
+            }
+
     async def process_video_file(self, video_filepath: str) -> Dict[str, Any]:
         """
         处理单个视频文件，自动下载对应弹幕

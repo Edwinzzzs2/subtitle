@@ -43,6 +43,7 @@ class SubtitleWatcher {
     this.waitTime = document.getElementById("wait-time");
     this.maxRetries = document.getElementById("max-retries");
     this.retryDelay = document.getElementById("retry-delay");
+    this.maxConcurrentWorkers = document.getElementById("max-concurrent-workers");
     this.logLevel = document.getElementById("log-level");
     this.maxLogLines = document.getElementById("max-log-lines");
     this.keepLogLines = document.getElementById("keep-log-lines");
@@ -269,6 +270,7 @@ class SubtitleWatcher {
         this.waitTime.value = config.wait_time || "";
         this.maxRetries.value = config.max_retries || "";
         this.retryDelay.value = config.retry_delay || "";
+        this.maxConcurrentWorkers.value = config.max_concurrent_workers || "";
         this.logLevel.value = config.log_level || "INFO";
         this.maxLogLines.value = config.max_log_lines || 3000;
         this.keepLogLines.value = config.keep_log_lines || 1000;
@@ -338,6 +340,7 @@ class SubtitleWatcher {
         wait_time: parseFloat(this.waitTime.value) || 0.5,
         max_retries: parseInt(this.maxRetries.value) || 3,
         retry_delay: parseFloat(this.retryDelay.value) || 1.0,
+        max_concurrent_workers: parseInt(this.maxConcurrentWorkers.value) || 4,
         log_level: this.logLevel.value,
         max_log_lines: parseInt(this.maxLogLines.value) || 3000,
         keep_log_lines: parseInt(this.keepLogLines.value) || 1000,

@@ -7,8 +7,11 @@ import asyncio
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from datetime import datetime
+import pytz
 # 延迟导入避免循环导入
 # from danmu.danmu_downloader import DanmuDownloader
+from .concurrent_processor import get_concurrent_processor, shutdown_concurrent_processor
 
 # 配置文件路径
 CONFIG_FILE = "./config/config.json"
@@ -20,6 +23,7 @@ DEFAULT_CONFIG = {
     "wait_time": 0.5,
     "max_retries": 3,
     "retry_delay": 1.0,
+    "max_concurrent_workers": 4,
     "enable_logging": True,
     "log_level": "INFO",
     "max_log_lines": 5000,
@@ -166,6 +170,7 @@ class SubtitleHandler(FileSystemEventHandler):
         super().__init__()
         self.processing_files = set()  # 记录正在处理的文件，避免重复处理
         self.recent_events = {}  # 记录最近的事件时间，用于去重
+        self.concurrent_processor = get_concurrent_processor()
 
     def on_created(self, event):
         if not event.is_directory and self._is_valid_file(event.src_path):
@@ -246,65 +251,9 @@ class SubtitleHandler(FileSystemEventHandler):
             return False
 
     def process_file(self, filepath):
-        """处理视频文件，自动下载对应弹幕"""
-
-        max_retries = _config.get('max_retries', 3)
-        retry_delay = _config.get('retry_delay', 1.0)
-
-        for attempt in range(max_retries):
-            try:
-                log_message(
-                    'debug', f"🔄 处理视频文件 (尝试 {attempt+1}/{max_retries}): {filepath}")
-
-                # 初始化弹幕下载器
-                global _danmu_downloader
-                if _danmu_downloader is None:
-                    # 延迟导入避免循环导入
-                    from danmu.danmu_downloader import DanmuDownloader
-                    _danmu_downloader = DanmuDownloader(_config)
-
-                # 异步处理弹幕下载
-                result = asyncio.run(self._process_video_async(filepath))
-
-                if result and result.get('success'):
-                    _processed_files.add(filepath)
-                    if result.get('skipped'):
-                        log_message('info', f"⏩ 弹幕文件已存在: {filepath}")
-                    else:
-                        # 获取下载的弹幕文件信息
-                        downloaded_files = result.get('downloaded_files', [])
-                        if downloaded_files:
-                            # 转换为相对路径，与视频路径显示方式保持一致
-                            file_paths = [os.path.relpath(
-                                f['file_path'], '.') for f in downloaded_files]
-                            provider_info = ', '.join(file_paths)
-                        else:
-                            provider_info = 'Unknown'
-                        series_name = result.get('series_name', '未知')
-                        episode = result.get('episode', '未知')
-                        log_message(
-                            'info', f"✅ 弹幕下载完成: {filepath} -> {provider_info} -> 📊 (弹幕数量: {result.get('danmu_count', 0)} 条)")
-                elif result:
-                    log_message(
-                        'error', f"❌ 弹幕下载失败: {filepath} | {result.get('message', 'Unknown error')}")
-                    # 处理失败的情况，继续重试机制
-                    continue
-                else:
-                    log_message('error', f"❌ 弹幕下载失败: {filepath}")
-                    # 处理失败的情况，继续重试机制
-                    continue
-
-                # 处理成功，跳出重试循环
-                break
-
-            except Exception as e:
-                log_message(
-                    'error', f"❌ 处理视频文件时出错 (尝试 {attempt+1}/{max_retries}): {filepath}, 错误: {e}")
-
-                # 如果不是最后一次尝试，则等待后重试
-                if attempt < max_retries - 1:
-                    log_message('info', f"⏱️ 等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
+        """处理视频文件，使用并发处理器"""
+        # 使用并发处理器处理文件
+        return self.concurrent_processor.process_file_concurrent(filepath)
 
     async def _process_video_async(self, filepath):
         """异步处理视频文件弹幕下载"""
@@ -409,6 +358,9 @@ def stop_watcher():
         if _handler:
             _handler.processing_files.clear()
 
+        # 关闭并发处理器
+        shutdown_concurrent_processor()
+
         log_message('info', "🛑 停止监听")
         return True
 
@@ -489,9 +441,15 @@ def update_config(new_config):
 
 def get_status():
     """获取监听器详细状态"""
+    from datetime import datetime
+    import pytz
+    beijing_tz = pytz.timezone('Asia/Shanghai')
+    current_time = datetime.now(beijing_tz)
+    
     return {
         'running': is_running(),
-        'processed_count': len(_processed_files)
+        'processed_count': len(_processed_files),
+        'current_time': current_time.isoformat()
     }
 
 

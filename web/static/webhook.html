@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook消息接收器</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>📨 Webhook消息接收器</h1>
+                <span class="version-tag">v1.0.6</span>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">主页</a>
+                <a href="/webhook" class="nav-link active">Webhook</a>
+            </div>
+        </header>
+
+        <main>
+            <!-- Webhook信息面板 -->
+            <section class="webhook-panel">
+                <div class="webhook-header">
+                    <h2 class="webhook-title">Webhook消息</h2>
+                    <div class="webhook-meta">
+                        <span class="meta-item">总消息数: <strong id="webhook-count">0</strong></span>
+                        <span class="meta-item">最后更新: <strong id="last-webhook-time">-</strong></span>
+                    </div>
+                    <div class="webhook-controls">
+                        <div class="webhook-filter-container">
+                            <svg class="filter-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"></path></svg>
+                            <input type="text" id="webhook-filter-input" class="webhook-filter-input" placeholder="过滤消息...">
+                        </div>
+                        <div>
+                            <button id="clear-webhook-btn" class="btn btn-outline btn-sm">清空</button>
+                            <button id="refresh-webhook-btn" class="btn btn-outline btn-sm">刷新</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="webhook-container" class="webhook-container">
+                    <div class="webhook-empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>暂无Webhook消息</p>
+                        <p class="webhook-endpoint">Webhook接收地址: <code id="webhook-url"></code></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Webhook信息 -->
+            <section class="webhook-info">
+                <h2>Webhook使用说明</h2>
+                <div class="info-content">
+                    <p>您可以向以下地址发送POST请求，系统将接收并显示请求内容：</p>
+                    <div class="code-block">
+                        <code id="webhook-endpoint"></code>
+                        <button id="copy-endpoint-btn" class="btn btn-sm">复制</button>
+                    </div>
+                    <h3>示例请求：</h3>
+                    <pre class="code-example">curl -X POST \
+  <span id="curl-endpoint"></span> \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello from webhook", "data": {"key": "value"}}'</pre>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>视频文件监听器 &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script src="/static/webhook.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置Webhook URL
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const webhookUrl = `${protocol}//${host}/api/webhook`;
+            
+            document.getElementById('webhook-url').textContent = webhookUrl;
+            document.getElementById('webhook-endpoint').textContent = webhookUrl;
+            document.getElementById('curl-endpoint').textContent = webhookUrl;
+            
+            // 复制按钮功能
+            document.getElementById('copy-endpoint-btn').addEventListener('click', function() {
+                navigator.clipboard.writeText(webhookUrl).then(function() {
+                    alert('Webhook地址已复制到剪贴板');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

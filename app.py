@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import threading
 import os
 import asyncio
+import json
 from datetime import datetime
 from utils import (
     start_watcher, stop_watcher, restart_watcher, is_running,
@@ -16,12 +17,20 @@ app = Flask(__name__, static_folder='web/static', template_folder='web/static')
 # 处理日志
 # 统一使用watcher.py的log_message函数记录日志
 
+# 存储webhook消息的列表，最多保存100条
+webhook_messages = []
+
 # process_directory_with_logging 函数已移至 utils/video_processor.py
 
 
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/webhook')
+def webhook_page():
+    return send_from_directory(app.static_folder, 'webhook.html')
 
 
 @app.route('/api/status')
@@ -208,7 +217,7 @@ def config():
                 return jsonify({"message": "无效的配置数据", "success": False})
 
             # 验证配置数据
-            valid_keys = ['watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging',
+            valid_keys = ['watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'max_concurrent_workers', 'enable_logging',
                           'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
             filtered_config = {k: v for k,
                                v in data.items() if k in valid_keys}
@@ -281,6 +290,66 @@ def danmu_config():
             })
         except Exception as e:
             return jsonify({"message": f"获取弹幕API配置失败: {str(e)}", "success": False})
+
+
+@app.route('/api/webhook', methods=['POST'])
+def receive_webhook():
+    """接收webhook消息并存储"""
+    try:
+        # 获取请求数据
+        data = request.get_json(silent=True) or {}
+        headers = dict(request.headers)
+        
+        # 创建webhook消息对象
+        webhook_msg = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "headers": headers,
+            "data": data,
+            "remote_addr": request.remote_addr
+        }
+        
+        # 添加到消息列表，保持最多100条
+        global webhook_messages
+        webhook_messages.insert(0, webhook_msg)  # 新消息插入到列表开头
+        if len(webhook_messages) > 100:
+            webhook_messages = webhook_messages[:100]
+        
+        log_message('info', f"收到webhook消息: {request.remote_addr}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Webhook消息已接收"
+        })
+    except Exception as e:
+        log_message('error', f"处理webhook消息失败: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"处理失败: {str(e)}"
+        }), 500
+
+
+@app.route('/api/webhook/messages', methods=['GET'])
+def get_webhook_messages():
+    """获取所有webhook消息"""
+    return jsonify({
+        "success": True,
+        "messages": webhook_messages
+    })
+
+
+@app.route('/api/webhook/clear', methods=['POST'])
+def clear_webhook_messages():
+    """清空所有webhook消息"""
+    global webhook_messages
+    count = len(webhook_messages)
+    webhook_messages = []
+    
+    log_message('info', f"清空了{count}条webhook消息")
+    
+    return jsonify({
+        "success": True,
+        "message": f"已清空{count}条webhook消息"
+    })
 
 
 @app.route('/api/clear-cache', methods=['POST'])
