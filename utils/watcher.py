@@ -17,15 +17,21 @@ CONFIG_FILE = "./config/config.json"
 
 # 默认配置
 DEFAULT_CONFIG = {
-    "watch_dirs": ["./videos"],
+    "watch_dirs": ["./videos", "./test_videos"],
     "file_extensions": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"],
     "wait_time": 0.5,
     "max_retries": 3,
     "retry_delay": 1.0,
     "enable_logging": True,
     "log_level": "INFO",
+    "max_log_lines": 5000,
+    "keep_log_lines": 2000,
     "cron_schedule": "0 5 * * *",
-    "cron_enabled": False
+    "cron_enabled": False,
+    "danmu_api": {
+        "base_url": "",
+        "token": ""
+    }
 }
 
 # 全局变量
