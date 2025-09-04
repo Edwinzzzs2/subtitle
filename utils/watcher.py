@@ -17,7 +17,7 @@ CONFIG_FILE = "./config.json"
 
 # 默认配置
 DEFAULT_CONFIG = {
-    "watch_dir": "./videos",
+    "watch_dirs": ["./videos"],
     "file_extensions": [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"],
     "wait_time": 0.5,
     "max_retries": 3,
@@ -308,9 +308,7 @@ def start_watcher():
         # 支持多个监听目录
         watch_dirs = _config.get('watch_dirs', [])
         if not watch_dirs:
-            # 兼容旧配置格式
-            old_watch_dir = _config.get('watch_dir', './videos')
-            watch_dirs = [old_watch_dir]
+            watch_dirs = ['./videos']
         
         if not watch_dirs:
             raise ValueError("没有配置监听目录")

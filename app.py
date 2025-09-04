@@ -187,8 +187,6 @@ def process_now():
         # 获取当前配置的监控目录
         config = get_config()
         watch_dirs = config.get('watch_dirs', [])
-        if not watch_dirs and config.get('watch_dir'):
-            watch_dirs = [config.get('watch_dir')]
         if not watch_dirs:
             watch_dirs = ['./videos']  # 默认目录
         
@@ -239,7 +237,7 @@ def config():
                 return jsonify({"message": "无效的配置数据", "success": False})
             
             # 验证配置数据
-            valid_keys = ['watch_dir', 'watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging', 'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
+            valid_keys = ['watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging', 'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
             filtered_config = {k: v for k, v in data.items() if k in valid_keys}
             
             if not filtered_config:

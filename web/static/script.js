@@ -242,9 +242,6 @@ class SubtitleWatcher {
                 const config = result.config;
                 // 处理监听目录（支持新旧格式）
                 let watchDirs = config.watch_dirs || [];
-                if (!watchDirs.length && config.watch_dir) {
-                    watchDirs = [config.watch_dir];
-                }
                 setWatchDirs(watchDirs);
                 this.fileExtensions.value = (config.file_extensions || []).join(', ');
                 this.waitTime.value = config.wait_time || '';
