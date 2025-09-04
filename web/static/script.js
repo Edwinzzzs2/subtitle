@@ -28,7 +28,7 @@ class SubtitleWatcher {
     this.clearLogsBtn = document.getElementById("clear-logs-btn");
     this.refreshLogsBtn = document.getElementById("refresh-logs-btn");
     this.createTestBtn = document.getElementById("create-test-btn");
-    this.testDanmuBtn = document.getElementById("test-danmu-btn");
+
     this.clearCacheBtn = document.getElementById("clear-cache-btn");
 
     // 状态元素
@@ -84,7 +84,7 @@ class SubtitleWatcher {
     this.clearLogsBtn.addEventListener("click", () => this.clearLogs());
     this.refreshLogsBtn.addEventListener("click", () => this.refreshLogs());
     this.createTestBtn.addEventListener("click", () => this.createTestFile());
-    this.testDanmuBtn.addEventListener("click", () => this.testDanmu());
+
     this.clearCacheBtn.addEventListener("click", () => this.clearCache());
 
     // Cron定时任务事件
@@ -452,41 +452,7 @@ class SubtitleWatcher {
     }
   }
 
-  async testDanmu() {
-    try {
-      this.setButtonLoading(this.testDanmuBtn, true);
-      const result = await this.apiCall("/test-danmu", { method: "POST" });
 
-      if (result.success) {
-        let xmlInfo = "";
-        if (result.xml_created && result.xml_file) {
-          xmlInfo = `<p><strong>XML文件:</strong> <span class="success">已创建 ${result.xml_file}</span></p>`;
-        } else {
-          xmlInfo = `<p><strong>XML文件:</strong> <span class="warning">未创建</span></p>`;
-        }
-
-        this.testResult.innerHTML = `
-                    <div class="danmu-test-result">
-                        <h4>弹幕测试结果</h4>
-                        <p><strong>搜索结果:</strong> ${result.search_result}</p>
-                        <p><strong>分集数量:</strong> ${result.episode_count}</p>
-                        <p><strong>弹幕数量:</strong> ${result.danmu_count}</p>
-                        ${xmlInfo}
-                        <p><strong>测试状态:</strong> <span class="success">成功</span></p>
-                    </div>
-                `;
-        this.testResult.className = "test-result success";
-      } else {
-        this.testResult.innerHTML = `弹幕测试失败: ${result.message}`;
-        this.testResult.className = "test-result error";
-      }
-    } catch (error) {
-      this.testResult.innerHTML = `弹幕测试失败: ${error.message}`;
-      this.testResult.className = "test-result error";
-    } finally {
-      this.setButtonLoading(this.testDanmuBtn, false);
-    }
-  }
 
   async clearCache() {
     if (!this.clearCacheBtn) return;

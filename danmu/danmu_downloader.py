@@ -55,8 +55,15 @@ class DanmuDownloader:
         self.xml_converter = JsonToXmlConverter()
         self.video_parser = VideoFileParser()
 
-        # 如果配置中有API key，设置到客户端
+        # 如果配置中有弹幕API配置，设置到客户端
         danmu_api_config = self.config.get('danmu_api', {})
+        
+        # 设置base_url
+        base_url = danmu_api_config.get('base_url', '')
+        if base_url:
+            self.danmu_client.set_base_url(base_url)
+            
+        # 设置API token
         api_key = danmu_api_config.get('token', '')
         if api_key:
             self.danmu_client.set_token(api_key)

@@ -4,7 +4,7 @@ import os
 import asyncio
 from datetime import datetime
 from utils import (
-    start_watcher, stop_watcher, restart_watcher, is_running, 
+    start_watcher, stop_watcher, restart_watcher, is_running,
     get_processed_files, clear_processed_files, get_config, save_config,
     update_config, get_status, log_message, load_config, setup_logger,
     add_processed_file, process_directory_with_logging
@@ -23,6 +23,7 @@ app = Flask(__name__, static_folder='web/static', template_folder='web/static')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
 
+
 @app.route('/api/status')
 def status():
     watcher_status = get_status()
@@ -31,10 +32,12 @@ def status():
         "processed_count": watcher_status['processed_count']
     })
 
+
 @app.route('/api/version')
 def version():
     """获取版本信息"""
     return jsonify(get_version_info())
+
 
 @app.route('/api/start', methods=['POST'])
 def start():
@@ -46,6 +49,7 @@ def start():
     else:
         log_message('error', "监听器启动失败")
         return jsonify({"message": "监听器启动失败", "success": False})
+
 
 @app.route('/api/stop', methods=['POST'])
 def stop():
@@ -59,6 +63,7 @@ def stop():
             return jsonify({"message": "监听器停止失败", "success": False})
     return jsonify({"message": "监听器未运行", "success": False})
 
+
 @app.route('/api/restart', methods=['POST'])
 def restart():
     success = restart_watcher()
@@ -69,16 +74,18 @@ def restart():
         log_message('error', "重启监听器失败")
         return jsonify({"message": "监听器重启失败", "success": False})
 
+
 @app.route('/api/clear-processed', methods=['POST'])
 def clear_processed():
     count = clear_processed_files()
     # log_message('info', f"清空已处理文件记录，共 {count} 个文件")
     return jsonify({"message": f"已清空 {count} 个文件的处理记录", "success": True, "count": count})
 
+
 @app.route('/api/logs')
 def get_logs():
     logs = []
-    
+
     # 统一从watcher.log文件读取所有日志
     log_file_path = os.path.join('logs', 'watcher.log')
     if os.path.exists(log_file_path):
@@ -87,7 +94,7 @@ def get_logs():
                 lines = f.readlines()
                 # 获取最后100行，提供更多日志历史
                 recent_lines = lines[-100:] if len(lines) > 100 else lines
-                
+
                 for line in recent_lines:
                     line = line.strip()
                     if line:
@@ -119,8 +126,9 @@ def get_logs():
                 'message': f"读取日志文件失败: {str(e)}",
                 'level': 'ERROR'
             })
-    
+
     return jsonify({"logs": logs})
+
 
 @app.route('/api/clear-logs', methods=['POST'])
 def clear_logs():
@@ -130,14 +138,15 @@ def clear_logs():
         if os.path.exists(log_file):
             with open(log_file, 'w', encoding='utf-8') as f:
                 f.write('')  # 清空文件内容
-        
+
         # 清空已处理文件记录
         cleared_count = clear_processed_files()
-        
+
         # log_message('info', f"日志已清空，已处理文件记录已重置（清空了 {cleared_count} 个文件记录）")
         return jsonify({"message": "日志已清空", "success": True})
     except Exception as e:
         return jsonify({"message": f"清空日志失败: {str(e)}", "success": False})
+
 
 @app.route('/api/process-now', methods=['POST'])
 def process_now():
@@ -148,12 +157,12 @@ def process_now():
         watch_dirs = config.get('watch_dirs', [])
         if not watch_dirs:
             watch_dirs = ['./videos']  # 默认目录
-        
+
         log_message('info', f"🚀 开始处理所有监控目录下的视频文件: {watch_dirs}")
-        
+
         total_count = 0
         processed_dirs = []
-        
+
         # 处理每个监控目录
         for directory in watch_dirs:
             if os.path.exists(directory):
@@ -164,11 +173,11 @@ def process_now():
                 processed_dirs.append(f"{directory}({count}个文件)")
             else:
                 log_message('warning', f"⚠️ 目录不存在，跳过: {directory}")
-        
+
         log_message('info', f"✅ 处理完成，共处理 {total_count} 个视频文件")
-        
+
         return jsonify({
-            "message": f"处理完成，共处理 {total_count} 个视频文件\n处理的目录: {', '.join(processed_dirs)}", 
+            "message": f"处理完成，共处理 {total_count} 个视频文件\n处理的目录: {', '.join(processed_dirs)}",
             "success": True,
             "count": total_count,
             "processed_dirs": processed_dirs
@@ -176,6 +185,7 @@ def process_now():
     except Exception as e:
         log_message('error', f"❌ 手动处理失败: {str(e)}")
         return jsonify({"message": f"处理失败: {str(e)}", "success": False})
+
 
 @app.route('/api/reload-config', methods=['POST'])
 def reload_config():
@@ -188,6 +198,7 @@ def reload_config():
         log_message('error', f"配置重新加载失败: {str(e)}")
         return jsonify({"message": f"配置重新加载失败: {str(e)}", "success": False})
 
+
 @app.route('/api/config', methods=['GET', 'POST'])
 def config():
     if request.method == 'POST':
@@ -195,23 +206,25 @@ def config():
             data = request.get_json()
             if not data:
                 return jsonify({"message": "无效的配置数据", "success": False})
-            
+
             # 验证配置数据
-            valid_keys = ['watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging', 'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
-            filtered_config = {k: v for k, v in data.items() if k in valid_keys}
-            
+            valid_keys = ['watch_dirs', 'file_extensions', 'wait_time', 'max_retries', 'retry_delay', 'enable_logging',
+                          'log_level', 'max_log_lines', 'keep_log_lines', 'cron_enabled', 'cron_schedule', 'danmu_api']
+            filtered_config = {k: v for k,
+                               v in data.items() if k in valid_keys}
+
             if not filtered_config:
                 return jsonify({"message": "没有有效的配置项", "success": False})
-            
+
             # 更新配置
             update_config(filtered_config)
-            
+
             return jsonify({
-                "message": "配置已保存", 
+                "message": "配置已保存",
                 "success": True,
                 "updated_keys": list(filtered_config.keys())
             })
-            
+
         except Exception as e:
             log_message('error', f"配置更新失败: {str(e)}")
             return jsonify({"message": f"配置保存失败: {str(e)}", "success": False})
@@ -226,6 +239,7 @@ def config():
         except Exception as e:
             return jsonify({"message": f"获取配置失败: {str(e)}", "success": False})
 
+
 @app.route('/api/danmu-config', methods=['GET', 'POST'])
 def danmu_config():
     if request.method == 'POST':
@@ -233,26 +247,26 @@ def danmu_config():
             data = request.get_json()
             if not data:
                 return jsonify({"message": "无效的弹幕API配置数据", "success": False})
-            
+
             # 构建弹幕API配置数据
             danmu_api_config = {}
             if 'base_url' in data:
                 danmu_api_config['base_url'] = data['base_url']
             if 'token' in data:
                 danmu_api_config['token'] = data['token']
-            
+
             if not danmu_api_config:
                 return jsonify({"message": "未提供有效的配置字段", "success": False})
-            
+
             # 更新弹幕API配置
             danmu_config_data = {'danmu_api': danmu_api_config}
             update_config(danmu_config_data)
-            
+
             return jsonify({
-                "message": "弹幕API配置已保存", 
+                "message": "弹幕API配置已保存",
                 "success": True
             })
-            
+
         except Exception as e:
             log_message('error', f"弹幕API配置更新失败: {str(e)}")
             return jsonify({"message": f"弹幕API配置保存失败: {str(e)}", "success": False})
@@ -268,120 +282,6 @@ def danmu_config():
         except Exception as e:
             return jsonify({"message": f"获取弹幕API配置失败: {str(e)}", "success": False})
 
-@app.route('/api/test-danmu', methods=['POST'])
-def test_danmu():
-    """测试弹幕功能（新版API）"""
-    try:
-        from danmu.json_to_xml import JsonToXmlConverter
-        import os
-        from datetime import datetime
-        
-        # 尝试获取全局下载器实例
-        from utils.watcher import get_global_downloader
-        downloader = get_global_downloader()
-        
-        # 如果全局实例不存在，创建新的实例
-        if downloader is None:
-            config = get_config()
-            from danmu.danmu_downloader import DanmuDownloader
-            downloader = DanmuDownloader(config)
-            log_message('debug', "测试弹幕使用新创建的下载器实例")
-        else:
-            log_message('debug', "测试弹幕使用全局下载器实例")
-        
-        # 获取弹幕客户端
-        danmu_client = downloader.danmu_client
-        
-        # 创建json转xml转换器
-        converter = JsonToXmlConverter()
-        
-        # 使用新版API获取作品列表
-        library_result = danmu_client.get_library_list()
-        if not library_result or not library_result.get('success'):
-            return jsonify({
-                'success': False,
-                'message': f'获取作品列表失败: {library_result.get("errorMessage", "未知错误")}'
-            })
-        
-        # 搜索匹配的动漫
-        animes = library_result.get('animes', [])
-        keyword = '凡人修仙传'
-        matched_anime = None
-        for anime in animes:
-            if keyword in anime.get('title', ''):
-                matched_anime = anime
-                break
-        
-        if not matched_anime:
-            return jsonify({
-                'success': False,
-                'message': f'未找到匹配的动漫: {keyword}',
-                'total_animes': len(animes)
-            })
-        
-        # 使用新版API获取弹幕数据
-        danmaku_data = danmu_client.get_danmaku_by_title_and_episode(
-            title=matched_anime.get('title'),
-            season=matched_anime.get('season', 1),
-            episode_index=1
-        )
-        
-        xml_file_path = None
-        danmu_count = 0
-        
-        if danmaku_data:
-            danmu_count = danmaku_data.get('count', 0)
-            comments_data = danmaku_data.get('comments', [])
-            
-            # 转换为XML文件
-            if comments_data:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                xml_filename = f'test_danmu_{timestamp}.xml'
-                xml_file_path = os.path.join('videos', xml_filename)
-                
-                # 确保videos目录存在
-                os.makedirs('videos', exist_ok=True)
-                
-                # 执行转换
-                conversion_success = converter.convert_json_to_xml(
-                    json_data=comments_data,
-                    output_path=xml_file_path,
-                    episode_id=f"{matched_anime.get('title')}_S{matched_anime.get('season', 1)}E1",
-                    use_dandan_format=True,
-                    provider_name="dandanplay"
-                )
-                
-                if not conversion_success:
-                    xml_file_path = None
-        
-        # 如果没有获取到真实弹幕数据，则使用测试数据
-        if danmu_count == 0:
-            # 使用测试数据
-            test_success = converter.test_conversion('videos')
-            if test_success:
-                # 查找刚创建的测试文件
-                test_files = [f for f in os.listdir('videos') if f.startswith('test_danmu_') and f.endswith('.xml')]
-                if test_files:
-                    xml_file_path = os.path.join('videos', sorted(test_files)[-1])  # 获取最新的文件
-                    danmu_count = 5  # 测试数据有5条弹幕
-        
-        return jsonify({
-            'success': True,
-            'matched_anime': matched_anime.get('title', '未知') if matched_anime else None,
-            'danmu_count': danmu_count,
-            'xml_file': xml_file_path if xml_file_path else None,
-            'xml_created': xml_file_path is not None
-        })
-        
-    except Exception as e:
-        import traceback
-        error_msg = f'弹幕测试失败: {str(e)}'
-        print(f"Error in test_danmu: {error_msg}")
-        print(f"Traceback: {traceback.format_exc()}")
-        return jsonify({
-            'success': False,
-            'message': error_msg
-        }), 500
 
 @app.route('/api/clear-cache', methods=['POST'])
 def clear_cache():
@@ -390,7 +290,7 @@ def clear_cache():
         # 尝试获取全局下载器实例
         from utils.watcher import get_global_downloader
         downloader = get_global_downloader()
-        
+
         # 如果全局实例不存在，创建新的实例
         if downloader is None:
             config = get_config()
@@ -399,21 +299,22 @@ def clear_cache():
             log_message('debug', "使用新创建的下载器实例清除缓存")
         else:
             log_message('debug', "使用全局下载器实例清除缓存")
-        
+
         downloader.clear_cache()
-        
+
         log_message('info', "弹幕缓存已清除")
         return jsonify({
             "success": True,
             "message": "弹幕缓存已清除"
         })
-        
+
     except Exception as e:
         log_message('error', f"清除缓存失败: {e}")
         return jsonify({
             "success": False,
             "message": f"清除缓存失败: {str(e)}"
         })
+
 
 @app.route('/api/cache-stats', methods=['GET'])
 def get_cache_stats():
@@ -422,7 +323,7 @@ def get_cache_stats():
         # 尝试获取全局下载器实例
         from utils.watcher import get_global_downloader
         downloader = get_global_downloader()
-        
+
         # 如果全局实例不存在，创建新的实例
         if downloader is None:
             config = get_config()
@@ -431,14 +332,14 @@ def get_cache_stats():
             log_message('debug', "使用新创建的下载器实例获取缓存统计")
         else:
             log_message('debug', "使用全局下载器实例获取缓存统计")
-        
+
         cache_stats = downloader.get_cache_stats()
-        
+
         return jsonify({
             "success": True,
             "cache_stats": cache_stats
         })
-        
+
     except Exception as e:
         log_message('error', f"获取缓存统计失败: {e}")
         return jsonify({
@@ -446,18 +347,20 @@ def get_cache_stats():
             "message": f"获取缓存统计失败: {str(e)}"
         })
 
+
 @app.route('/api/create-test', methods=['POST'])
 def create_test():
     test_dir = "./test_videos"
     os.makedirs(test_dir, exist_ok=True)
-    
+
     # 获取当前测试视频集数
     import glob
     import re
-    
+
     # 查找现有的测试视频文件
-    existing_files = glob.glob(os.path.join(test_dir, "凡人修仙传 - S01E* - 第 * 集.mp4"))
-    
+    existing_files = glob.glob(os.path.join(
+        test_dir, "凡人修仙传 - S01E* - 第 * 集.mp4"))
+
     # 确定下一集的集数
     next_episode = 1
     if existing_files:
@@ -467,62 +370,65 @@ def create_test():
             match = re.search(r'S01E(\d+)', file)
             if match:
                 episode_numbers.append(int(match.group(1)))
-        
+
         if episode_numbers:
             next_episode = max(episode_numbers) + 1
-    
+
     # 创建测试视频文件名
-    test_file = os.path.join(test_dir, f"凡人修仙传 - S01E{next_episode} - 第 {next_episode} 集.mp4")
-    
+    test_file = os.path.join(
+        test_dir, f"凡人修仙传 - S01E{next_episode} - 第 {next_episode} 集.mp4")
+
     # 创建测试视频文件
     from utils import create_test_video
     create_test_video(test_file, size_kb=2048)  # 创建2MB大小的测试视频文件
-    
+
     # 文件监听器会自动检测并记录日志，无需手动记录
     return jsonify({"message": f"测试视频文件已创建: {test_file}", "success": True})
+
 
 if __name__ == '__main__':
     # 启动时加载一次配置
     load_config()
     setup_logger()
-    
+
     # 配置所有相关模块的日志器
     import logging
-    
+
     # 获取配置
     config = get_config()
     log_level = getattr(logging, config.get('log_level', 'INFO'))
-    
+
     # 配置danmu模块的日志器
     danmu_logger = logging.getLogger('danmu.danmu_client')
     danmu_logger.setLevel(log_level)
-    
+
     # 如果danmu_logger没有处理器，添加与watcher相同的处理器
     if not danmu_logger.handlers:
         # 控制台处理器
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
-        
+
         # 文件处理器
         import os
         os.makedirs('logs', exist_ok=True)
-        file_handler = logging.FileHandler('logs/watcher.log', encoding='utf-8')
+        file_handler = logging.FileHandler(
+            'logs/watcher.log', encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
-        
+
         # 格式化器
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
-        
+
         danmu_logger.addHandler(console_handler)
         if config.get('enable_logging', True):
             danmu_logger.addHandler(file_handler)
-    
+
     # 启动时自动开始监听
     log_message('info', "程序启动，自动开启文件监听功能")
     start_watcher()
-    
+
     # 禁用重新加载器以避免多进程问题
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

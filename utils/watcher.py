@@ -422,6 +422,15 @@ def restart_watcher():
     log_message('info', "🔄 重启监听器...")
     stop_watcher()
     time.sleep(1)  # 等待完全停止
+    
+    # 重新加载配置文件以获取最新配置
+    log_message('info', "📄 重新加载配置文件...")
+    load_config()
+    
+    # 重置全局弹幕下载器实例以应用新配置
+    global _danmu_downloader
+    _danmu_downloader = None
+    
     return start_watcher()
 
 
