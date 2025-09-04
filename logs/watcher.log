@@ -1,3 +1,21 @@
 2025-09-04 12:19:17,371 - subtitle_watcher - INFO - 🗑️ 已清空 0 个文件的处理记录
 2025-09-04 12:19:18,201 - subtitle_watcher - INFO - 📄 检测到新文件（创建）: ./test_videos\凡人修仙传 - S01E24 - 第 24 集.mp4
 2025-09-04 12:19:20,246 - subtitle_watcher - INFO - ✅ 弹幕下载完成: ./test_videos\凡人修仙传 - S01E24 - 第 24 集.mp4 -> test_videos\凡人修仙传 - S01E24 - 第 24 集_BilibiliID.xml -> 📊 (弹幕数量: 26023 条
+2025-09-04 14:11:02,131 - subtitle_watcher - INFO - 程序启动，自动开启文件监听功能
+2025-09-04 14:11:02,131 - subtitle_watcher - INFO - 📁 已添加监听目录: D:\code\github\subtitle\videos
+2025-09-04 14:11:02,132 - subtitle_watcher - INFO - 📁 已添加监听目录: D:\code\github\subtitle\test_videos
+2025-09-04 14:11:02,133 - subtitle_watcher - INFO - 👀 开始监听 2 个目录
+2025-09-04 14:11:02,133 - subtitle_watcher - INFO -   - D:\code\github\subtitle\videos
+2025-09-04 14:11:02,133 - subtitle_watcher - INFO -   - D:\code\github\subtitle\test_videos
+2025-09-04 14:11:02,133 - subtitle_watcher - INFO - 🔍 监听器状态: 运行中
+2025-09-04 14:11:02,134 - subtitle_watcher - INFO - 📋 支持的视频文件类型: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+2025-09-04 14:11:03,939 - subtitle_watcher - INFO - 配置文件已重新加载
+2025-09-04 14:11:20,844 - subtitle_watcher - INFO - 程序启动，自动开启文件监听功能
+2025-09-04 14:11:20,846 - subtitle_watcher - INFO - 📁 已添加监听目录: D:\code\github\subtitle\videos
+2025-09-04 14:11:20,846 - subtitle_watcher - INFO - 📁 已添加监听目录: D:\code\github\subtitle\test_videos
+2025-09-04 14:11:20,848 - subtitle_watcher - INFO - 👀 开始监听 2 个目录
+2025-09-04 14:11:20,848 - subtitle_watcher - INFO -   - D:\code\github\subtitle\videos
+2025-09-04 14:11:20,848 - subtitle_watcher - INFO -   - D:\code\github\subtitle\test_videos
+2025-09-04 14:11:20,848 - subtitle_watcher - INFO - 🔍 监听器状态: 运行中
+2025-09-04 14:11:20,849 - subtitle_watcher - INFO - 📋 支持的视频文件类型: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+2025-09-04 14:11:21,047 - subtitle_watcher - INFO - 配置文件已重新加载
