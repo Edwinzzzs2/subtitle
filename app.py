@@ -8,6 +8,7 @@ from utils import (
     update_config, get_status, log_message, load_config, setup_logger,
     add_processed_file, process_directory, modify_xml, create_test_xml
 )
+from version import get_version_info
 
 app = Flask(__name__, static_folder='web/static', template_folder='web/static')
 
@@ -70,6 +71,11 @@ def status():
         "running": watcher_status['running'],
         "processed_count": watcher_status['processed_count']
     })
+
+@app.route('/api/version')
+def version():
+    """获取版本信息"""
+    return jsonify(get_version_info())
 
 @app.route('/api/start', methods=['POST'])
 def start():

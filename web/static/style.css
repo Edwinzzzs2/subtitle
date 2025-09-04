@@ -35,6 +35,29 @@ h1 {
     font-weight: 700;
 }
 
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.version-tag {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.version-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
 .status-indicator {
     display: flex;
     align-items: center;

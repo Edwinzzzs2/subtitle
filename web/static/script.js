@@ -12,6 +12,7 @@ class SubtitleWatcher {
         this.bindEvents();
         this.startStatusPolling();
         this.loadConfig();
+        this.loadVersion();
     }
 
     initializeElements() {
@@ -48,6 +49,9 @@ class SubtitleWatcher {
 
         // 日志刷新指示器
         this.logRefreshStatus = document.getElementById('log-refresh-status');
+        
+        // 版本元素
+        this.versionTag = document.querySelector('.version-tag');
         this.logRefreshDot = document.getElementById('log-refresh-dot');
 
         // Cron定时任务元素
@@ -274,6 +278,19 @@ class SubtitleWatcher {
             this.showNotification('配置加载失败', 'error');
         } finally {
             this.setButtonLoading(this.loadConfigBtn, false);
+        }
+    }
+
+    async loadVersion() {
+        try {
+            const response = await this.apiCall('/version');
+            if (response.version && this.versionTag) {
+                this.versionTag.textContent = `v${response.version}`;
+                this.versionTag.title = `版本: ${response.version}\n构建日期: ${response.build_date}\n${response.description}`;
+            }
+        } catch (error) {
+            console.error('加载版本信息时出错:', error);
+            // 版本信息加载失败不显示错误通知，保持静默
         }
     }
 
