@@ -190,7 +190,7 @@ class DanmuDownloader:
 
                     # 转换为XML并保存，使用ID格式的provider名称
                     xml_provider_name = DANMU_SOURCES.get(
-                        provider_name.lower(), f"{provider_name.capitalize()}ID")
+                        provider_name.lower(), DANMU_SOURCES.get('tencent', 'TencentID'))
                     xml_result = self._save_danmu_xml(
                         danmu_data, danmu_filepath, xml_provider_name)
                     if not xml_result:
@@ -359,7 +359,7 @@ class DanmuDownloader:
 
                     # 转换为XML并保存，使用ID格式的provider名称
                     xml_provider_name = DANMU_SOURCES.get(
-                        provider_name.lower(), f"{provider_name.capitalize()}ID")
+                        provider_name.lower(), DANMU_SOURCES.get('tencent', 'TencentID'))
                     xml_result = self._save_danmu_xml(
                         danmu_data, danmu_filepath, xml_provider_name)
                     if not xml_result:
@@ -702,7 +702,7 @@ class DanmuDownloader:
         """
         # 获取对应的后缀，使用公共配置
         suffix = DANMU_SOURCES.get(
-            provider_name.lower(), f"{provider_name.capitalize()}ID")
+            provider_name.lower(), DANMU_SOURCES.get('tencent', 'TencentID'))
 
         # 生成文件名
         content_type = video_info.get('content_type', 'tv')
