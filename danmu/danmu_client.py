@@ -82,8 +82,14 @@ class DanmuClient:
         Args:
             base_url: 新的base_url
         """
-        self.config['base_url'] = base_url
-        self.logger.info(f"已更新base_url: {base_url}")
+        # 只有当base_url真正发生变化时才输出日志
+        current_base_url = self.config.get('base_url', '')
+        if current_base_url != base_url:
+            self.config['base_url'] = base_url
+            self.logger.info(f"已更新base_url: {base_url}")
+        else:
+            # 如果base_url没有变化，只更新配置但不输出日志
+            self.config['base_url'] = base_url
 
     def get_base_url(self) -> str:
         """获取当前的base_url
@@ -99,9 +105,16 @@ class DanmuClient:
         Args:
             token: API访问token
         """
-        self.config['token'] = token
-        self.api_key = token
-        self.logger.info(f"已更新API Key: {'已设置' if token else '已清除'}")
+        # 只有当token真正发生变化时才输出日志
+        current_token = self.config.get('token', '')
+        if current_token != token:
+            self.config['token'] = token
+            self.api_key = token
+            self.logger.info(f"已更新API Key: {'已设置' if token else '已清除'}")
+        else:
+            # 如果token没有变化，只更新配置但不输出日志
+            self.config['token'] = token
+            self.api_key = token
 
     def get_token(self) -> str:
         """获取当前的token

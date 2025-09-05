@@ -193,8 +193,6 @@ def process_now():
             else:
                 log_message('warning', f"⚠️ 目录不存在，跳过: {directory}")
 
-        log_message('info', f"✅ 处理完成，共处理 {total_count} 个视频文件")
-
         return jsonify({
             "message": f"处理完成，共处理 {total_count} 个视频文件\n处理的目录: {', '.join(processed_dirs)}",
             "success": True,
@@ -453,9 +451,9 @@ def create_test():
         if episode_numbers:
             next_episode = max(episode_numbers) + 1
 
-    # 创建测试视频文件名
+    # 生成下一个集数的测试文件名
     test_file = os.path.join(
-        test_dir, f"凡人修仙传 - S01E{next_episode} - 第 {next_episode} 集.mp4")
+        test_dir, f"凡人修仙传 - S01E{next_episode:02d} - 第 {next_episode} 集.mp4")
 
     # 创建测试视频文件
     from utils import create_test_video

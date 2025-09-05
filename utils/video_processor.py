@@ -33,9 +33,7 @@ def process_directory_with_logging(directory):
     if video_files:
         # 使用并发处理器批量处理所有文件
         concurrent_processor = get_concurrent_processor()
-        log_message('info', f"🚀 开始并发批量处理 {len(video_files)} 个视频文件")
         success_count = concurrent_processor.process_files_batch(video_files)
-        log_message('info', f"✅ 批量处理完成，成功处理 {success_count}/{len(video_files)} 个文件")
         return success_count
     else:
         log_message('info', "📁 没有找到需要处理的视频文件")

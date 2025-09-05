@@ -448,7 +448,7 @@ class SubtitleWatcher {
 
       if (result.success) {
         this.logContainer.innerHTML =
-          '<div class="log-entry"><div class="log-header"><span class="log-time">刚刚</span><span class="log-level">[INFO]</span></div><div class="log-message">日志已清空，等待新的日志条目...</div></div>';
+          '<div class="log-entry"><div class="log-header"><span class="log-level">[INFO]</span></div><div class="log-message">日志已清空，等待新的日志条目...</div></div>';
         this.showNotification("日志清空成功", "success");
         // 刷新状态以更新已处理文件计数
         this.refreshStatus();
@@ -556,7 +556,7 @@ class SubtitleWatcher {
 
   updateLogs(logs) {
     if (!logs) {
-      const emptyContent = '<div class="log-entry"><span class="log-time">暂无日志</span><span class="log-message">等待处理日志...</span></div>';
+      const emptyContent = '<div class="log-entry"><span class="log-message">暂无日志，等待处理日志...</span></div>';
       if (this.logContainer.innerHTML !== emptyContent) {
         this.logContainer.innerHTML = emptyContent;
       }
@@ -574,7 +574,7 @@ class SubtitleWatcher {
     });
 
     if (filteredLogs.length === 0) {
-      const noMatchContent = '<div class="log-entry"><span class="log-time">没有匹配的日志</span><span class="log-message">请调整过滤器...</span></div>';
+      const noMatchContent = '<div class="log-entry"><span class="log-message">没有匹配的日志，请调整过滤器...</span></div>';
       if (this.logContainer.innerHTML !== noMatchContent) {
         this.logContainer.innerHTML = noMatchContent;
       }
@@ -598,13 +598,6 @@ class SubtitleWatcher {
       .map((log, index) => {
         const level = log.level || "INFO";
         const levelClass = level.toLowerCase();
-        // 从时间戳中提取时分秒部分，实现无感刷新
-        let timeDisplay = log.timestamp || "";
-        if (timeDisplay) {
-          const timeMatch = timeDisplay.match(/\d{2}:\d{2}:\d{2}/);
-          timeDisplay = timeMatch ? timeMatch[0] : timeDisplay;
-        }
-
         // 为新日志添加高亮效果
         const isNewLog = hasNewLogs && index >= currentLogCount;
         const newLogClass = isNewLog ? " new-log" : "";
@@ -612,7 +605,6 @@ class SubtitleWatcher {
         return `
                 <div class="log-entry log-${levelClass}${newLogClass}">
                     <div class="log-header">
-                        <span class="log-time">${timeDisplay}</span>
                         <span class="log-level">[${level}]</span>
                     </div>
                     <div class="log-message">${log.message}</div>

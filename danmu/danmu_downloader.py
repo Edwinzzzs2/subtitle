@@ -717,7 +717,7 @@ class DanmuDownloader:
             # 电视剧使用详细格式：剧名 - S01E01 - 第1集_弹幕源.xml
             season = video_info.get('season') or 1
             episode = video_info.get('episode') or 1
-            base_name = f"{video_info['series_name']} - S{season:02d}E{episode} - 第 {episode} 集_{suffix}.xml"
+            base_name = f"{video_info['series_name']} - S{season:02d}E{episode:02d} - 第 {episode} 集_{suffix}.xml"
 
         # 确定输出目录
         if video_filepath:
