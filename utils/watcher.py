@@ -172,6 +172,21 @@ class SubtitleHandler(FileSystemEventHandler):
         self.recent_events = {}  # 记录最近的事件时间，用于去重
         self.concurrent_processor = get_concurrent_processor()
 
+    def _schedule_processing(self, filepath):
+        """在独立的定时器线程中延迟调度处理，避免阻塞watchdog事件线程"""
+        wait_time = _config.get('wait_time', 0.5)
+
+        def run():
+            try:
+                self.process_file(filepath)
+            finally:
+                # 在处理调度后移除，避免长时间占用去重集合
+                self.processing_files.discard(filepath)
+
+        timer = threading.Timer(wait_time, run)
+        timer.daemon = True
+        timer.start()
+
     def on_created(self, event):
         if not event.is_directory and self._is_valid_file(event.src_path):
             if event.src_path not in self.processing_files:
@@ -179,10 +194,8 @@ class SubtitleHandler(FileSystemEventHandler):
                 if self._should_process_event(event.src_path, 'created'):
                     self.processing_files.add(event.src_path)
                     log_message('info', f"📄 检测到新文件（创建）: {event.src_path}")
-                    # 等待文件写入完成
-                    time.sleep(_config.get('wait_time', 0.5))
-                    self.process_file(event.src_path)
-                    self.processing_files.discard(event.src_path)
+                    # 不在事件线程中sleep，改为定时调度
+                    self._schedule_processing(event.src_path)
 
     # 已移除on_modified方法，因为我们只关注视频文件的创建和移动事件
 
@@ -193,10 +206,8 @@ class SubtitleHandler(FileSystemEventHandler):
                 if self._should_process_event(event.dest_path, 'moved'):
                     self.processing_files.add(event.dest_path)
                     log_message('info', f"📦 检测到新文件（移动/复制）: {event.dest_path}")
-                    # 等待文件写入完成
-                    time.sleep(_config.get('wait_time', 0.5))
-                    self.process_file(event.dest_path)
-                    self.processing_files.discard(event.dest_path)
+                    # 不在事件线程中sleep，改为定时调度
+                    self._schedule_processing(event.dest_path)
 
     def _should_process_event(self, filepath, event_type):
         """检查是否应该处理此事件，避免短时间内重复处理同一文件"""
@@ -296,8 +307,9 @@ def start_watcher():
         if _handler is None:
             _handler = SubtitleHandler()
         else:
-            # 重置处理器状态
+            # 重置处理器状态，并刷新并发处理器实例
             _handler.processing_files.clear()
+            _handler.concurrent_processor = get_concurrent_processor()
 
         # 为每个目录设置监听
         valid_dirs = []
@@ -357,6 +369,7 @@ def stop_watcher():
         # 清理处理器状态
         if _handler:
             _handler.processing_files.clear()
+            _handler = None
 
         # 关闭并发处理器
         shutdown_concurrent_processor()
