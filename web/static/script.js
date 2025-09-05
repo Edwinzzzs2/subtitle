@@ -69,6 +69,7 @@ class SubtitleWatcher {
     this.logContainer = document.getElementById("log-container");
     this.testResult = document.getElementById("test-result");
     this.logFilterInput = document.getElementById("log-filter-input");
+    this.clearFilterBtn = document.getElementById("clear-filter-btn");
   }
 
   bindEvents() {
@@ -95,7 +96,28 @@ class SubtitleWatcher {
     );
 
     // 日志过滤
-    this.logFilterInput.addEventListener("input", () => this.refreshLogs());
+    this.logFilterInput.addEventListener("input", () => {
+      // 根据有无内容显示/隐藏清空按钮
+      if (this.clearFilterBtn) {
+        if (this.logFilterInput.value && this.logFilterInput.value.length > 0) {
+          this.clearFilterBtn.classList.add("visible");
+        } else {
+          this.clearFilterBtn.classList.remove("visible");
+        }
+      }
+      this.refreshLogs();
+    });
+
+    if (this.clearFilterBtn) {
+      // 点击清空按钮
+      this.clearFilterBtn.addEventListener("click", () => {
+        if (!this.logFilterInput) return;
+        this.logFilterInput.value = "";
+        this.clearFilterBtn.classList.remove("visible");
+        this.logFilterInput.focus();
+        this.refreshLogs();
+      });
+    }
   }
 
   async apiCall(endpoint, options = {}) {
@@ -486,8 +508,16 @@ class SubtitleWatcher {
   updateStatus(status) {
     // 基本状态
     const isRunning = status.running || status.watching; // 兼容新旧字段名
-    // 使用后端返回的北京时间，如果没有则显示当前时间
-    this.lastUpdateLog.textContent = status.current_time || new Date().toLocaleTimeString();
+    // 使用后端返回的北京时间，如果没有则显示当前时间，只显示时分秒
+    let timeDisplay = '';
+    if (status.current_time) {
+      // 从完整时间格式中提取时分秒部分
+      const timeMatch = status.current_time.match(/\d{2}:\d{2}:\d{2}/);
+      timeDisplay = timeMatch ? timeMatch[0] : status.current_time;
+    } else {
+      timeDisplay = new Date().toLocaleTimeString();
+    }
+    this.lastUpdateLog.textContent = timeDisplay;
     this.processedCountLog.textContent = status.processed_count || 0;
 
     // 更新头部状态指示器
@@ -526,8 +556,10 @@ class SubtitleWatcher {
 
   updateLogs(logs) {
     if (!logs) {
-      this.logContainer.innerHTML =
-        '<div class="log-entry"><span class="log-time">暂无日志</span><span class="log-message">等待处理日志...</span></div>';
+      const emptyContent = '<div class="log-entry"><span class="log-time">暂无日志</span><span class="log-message">等待处理日志...</span></div>';
+      if (this.logContainer.innerHTML !== emptyContent) {
+        this.logContainer.innerHTML = emptyContent;
+      }
       return;
     }
 
@@ -542,14 +574,16 @@ class SubtitleWatcher {
     });
 
     if (filteredLogs.length === 0) {
-      this.logContainer.innerHTML =
-        '<div class="log-entry"><span class="log-time">没有匹配的日志</span><span class="log-message">请调整过滤器...</span></div>';
+      const noMatchContent = '<div class="log-entry"><span class="log-time">没有匹配的日志</span><span class="log-message">请调整过滤器...</span></div>';
+      if (this.logContainer.innerHTML !== noMatchContent) {
+        this.logContainer.innerHTML = noMatchContent;
+      }
       return;
     }
 
     // 记录当前日志数量，用于检测新日志
     const currentLogCount = this.logContainer.children.length;
-    const newLogCount = logs.length;
+    const newLogCount = filteredLogs.length;
 
     // 检查是否有新日志
     const hasNewLogs = newLogCount > currentLogCount;
@@ -559,12 +593,17 @@ class SubtitleWatcher {
       this.logContainer.scrollTop >=
       this.logContainer.scrollHeight - this.logContainer.clientHeight - 10;
 
-    this.logContainer.innerHTML = filteredLogs
+    // 生成新的HTML内容
+    const newContent = filteredLogs
       .map((log, index) => {
         const level = log.level || "INFO";
         const levelClass = level.toLowerCase();
-        // 直接使用后端返回的北京时间，不做格式化处理
-        const formattedTime = log.timestamp || "";
+        // 从时间戳中提取时分秒部分，实现无感刷新
+        let timeDisplay = log.timestamp || "";
+        if (timeDisplay) {
+          const timeMatch = timeDisplay.match(/\d{2}:\d{2}:\d{2}/);
+          timeDisplay = timeMatch ? timeMatch[0] : timeDisplay;
+        }
 
         // 为新日志添加高亮效果
         const isNewLog = hasNewLogs && index >= currentLogCount;
@@ -573,7 +612,7 @@ class SubtitleWatcher {
         return `
                 <div class="log-entry log-${levelClass}${newLogClass}">
                     <div class="log-header">
-                        <span class="log-time">${formattedTime}</span>
+                        <span class="log-time">${timeDisplay}</span>
                         <span class="log-level">[${level}]</span>
                     </div>
                     <div class="log-message">${log.message}</div>
@@ -581,6 +620,11 @@ class SubtitleWatcher {
             `;
       })
       .join("");
+
+    // 只有当内容真正发生变化时才更新DOM，减少闪烁
+    if (this.logContainer.innerHTML !== newContent) {
+      this.logContainer.innerHTML = newContent;
+    }
 
     // 如果用户在底部或有新日志，自动滚动到底部
     if (isAtBottom || hasNewLogs) {

@@ -104,7 +104,7 @@ class DanmuDownloader:
         try:
             logger.info(f"开始处理视频文件: {video_filepath}")
 
-            # 1. 解析视频文件名
+            # 1. 先尝试解析视频文件名（不指定类型）
             video_info = self.video_parser.parse_video_filename(video_filepath)
             if not video_info:
                 return {
@@ -112,6 +112,20 @@ class DanmuDownloader:
                     'message': '无法解析视频文件名',
                     'video_file': video_filepath
                 }
+            
+            # 1.1 根据解析结果搜索内容，获取准确的类型信息
+            search_result = self._search_anime(
+                video_info['series_name'], video_info.get('season'))
+            
+            # 1.2 如果找到匹配内容且类型不同，重新解析
+            if search_result and search_result.get('type'):
+                content_type = search_result.get('type')
+                if content_type != video_info.get('content_type'):
+                    logger.debug(f"根据库中类型重新解析: {content_type}")
+                    new_video_info = self.video_parser.parse_video_filename(video_filepath, content_type)
+                    if new_video_info:
+                        video_info = new_video_info
+                        logger.debug(f"重新解析后的视频信息: {video_info}")
 
             logger.debug(f"视频解析结果: {video_info}")
 
@@ -124,15 +138,17 @@ class DanmuDownloader:
             if os.path.exists(danmu_filepath):
                 logger.debug(f"弹幕文件已存在，将强制覆盖: {danmu_filepath}")
 
-            # 3. 搜索动漫/剧集（传递季数信息）
-            search_result = self._search_anime(
-                video_info['series_name'], video_info.get('season'))
+            # 3. 确保有搜索结果（如果之前没有搜索到，再次尝试）
             if not search_result:
-                return {
-                    'success': False,
-                    'message': f"未找到匹配的动漫: {video_info['series_name']} 第{video_info.get('season', '?')}季",
-                    'video_file': video_filepath
-                }
+                search_result = self._search_anime(
+                    video_info['series_name'], video_info.get('season'))
+                if not search_result:
+                    content_type_msg = f"({video_info.get('content_type', '未知类型')})"
+                    return {
+                        'success': False,
+                        'message': f"未找到匹配的内容: {video_info['series_name']} 第{video_info.get('season', '?')}季 {content_type_msg}",
+                        'video_file': video_filepath
+                    }
 
             # 4. 获取分集信息
             all_episodes = self._get_episodes(search_result['animeId'])
@@ -257,7 +273,7 @@ class DanmuDownloader:
         try:
             logger.info(f"开始处理视频文件: {video_filepath}")
 
-            # 1. 解析视频文件名
+            # 1. 先尝试解析视频文件名（不指定类型）
             video_info = self.video_parser.parse_video_filename(video_filepath)
             if not video_info:
                 return {
@@ -265,6 +281,20 @@ class DanmuDownloader:
                     'message': '无法解析视频文件名',
                     'video_file': video_filepath
                 }
+            
+            # 1.1 根据解析结果搜索内容，获取准确的类型信息
+            search_result = self._search_anime(
+                video_info['series_name'], video_info.get('season'))
+            
+            # 1.2 如果找到匹配内容且类型不同，重新解析
+            if search_result and search_result.get('type'):
+                content_type = search_result.get('type')
+                if content_type != video_info.get('content_type'):
+                    logger.debug(f"根据库中类型重新解析: {content_type}")
+                    new_video_info = self.video_parser.parse_video_filename(video_filepath, content_type)
+                    if new_video_info:
+                        video_info = new_video_info
+                        logger.debug(f"重新解析后的视频信息: {video_info}")
 
             logger.debug(f"视频解析结果: {video_info}")
 
@@ -277,15 +307,17 @@ class DanmuDownloader:
             if os.path.exists(danmu_filepath):
                 logger.debug(f"弹幕文件已存在，将强制覆盖: {danmu_filepath}")
 
-            # 3. 搜索动漫/剧集（传递季数信息）
-            search_result = self._search_anime(
-                video_info['series_name'], video_info.get('season'))
+            # 3. 确保有搜索结果（如果之前没有搜索到，再次尝试）
             if not search_result:
-                return {
-                    'success': False,
-                    'message': f"未找到匹配的动漫: {video_info['series_name']} 第{video_info.get('season', '?')}季",
-                    'video_file': video_filepath
-                }
+                search_result = self._search_anime(
+                    video_info['series_name'], video_info.get('season'))
+                if not search_result:
+                    content_type_msg = f"({video_info.get('content_type', '未知类型')})"
+                    return {
+                        'success': False,
+                        'message': f"未找到匹配的内容: {video_info['series_name']} 第{video_info.get('season', '?')}季 {content_type_msg}",
+                        'video_file': video_filepath
+                    }
 
             # 4. 获取分集信息
             all_episodes = self._get_episodes(search_result['animeId'])
@@ -673,7 +705,19 @@ class DanmuDownloader:
             provider_name.lower(), f"{provider_name.capitalize()}ID")
 
         # 生成文件名
-        base_name = f"{video_info['series_name']} - S{video_info['season']:02d}E{video_info['episode']} - 第 {video_info['episode']} 集_{suffix}.xml"
+        content_type = video_info.get('content_type', 'tv')
+        if content_type == 'movie':
+            # 电影使用原始文件名格式：原文件名_弹幕源.xml
+            if video_filepath:
+                original_name = os.path.splitext(os.path.basename(video_filepath))[0]
+                base_name = f"{original_name}_{suffix}.xml"
+            else:
+                base_name = f"{video_info['series_name']}_{suffix}.xml"
+        else:
+            # 电视剧使用详细格式：剧名 - S01E01 - 第1集_弹幕源.xml
+            season = video_info.get('season') or 1
+            episode = video_info.get('episode') or 1
+            base_name = f"{video_info['series_name']} - S{season:02d}E{episode} - 第 {episode} 集_{suffix}.xml"
 
         # 确定输出目录
         if video_filepath:

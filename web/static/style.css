@@ -180,14 +180,21 @@ section:hover {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
-.filter-icon {
+/* Scoped icon for webhook filter to avoid conflicts */
+.webhook-filter-container .filter-icon {
     position: absolute;
     left: 10px;
+    right: auto;
     top: 50%;
     transform: translateY(-50%);
     width: 16px;
     height: 16px;
     color: #a0aec0;
+}
+
+/* Highlight icon when any child in container is focused */
+.webhook-filter-container:focus-within .filter-icon {
+    color: #667eea;
 }
 
 .webhook-container {
@@ -660,12 +667,12 @@ input[type="text"]:focus, input[type="password"]:focus {
     position: relative;
     display: flex;
     align-items: center;
-    width: 200px; /* Adjust width as needed */
+    width: 250px; /* 增加宽度以容纳搜索图标和清空按钮 */
 }
 
 .log-filter-input {
     width: 100%;
-    padding: 8px 12px 8px 35px;
+    padding: 8px 50px 8px 12px; /* 右侧留出更多空间给两个图标 */
     border: 1px solid #e2e8f0;
     border-radius: 20px;
     font-size: 13px;
@@ -680,24 +687,57 @@ input[type="text"]:focus, input[type="password"]:focus {
     background-color: white;
 }
 
-.filter-icon {
+/* Scoped icon for log filter, placed on the right side */
+.log-filter-container .filter-icon {
     position: absolute;
-    right: 12px;
+    right: 28px; /* 放在清空按钮左边 */
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
     width: 16px;
     height: 16px;
     color: #a0aec0;
     transition: color 0.3s ease;
+    pointer-events: none; /* 防止点击事件冲突 */
 }
 
-.log-filter-input:focus + .filter-icon {
+/* 清空按钮样式 */
+.clear-filter-btn {
+    position: absolute;
+    right: 6px; /* 最右边位置 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* 显示清空按钮 */
+.clear-filter-btn.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.clear-filter-btn:hover {
+    background-color: rgba(160, 174, 192, 0.2);
+}
+
+/* 使用 focus-within 在输入框聚焦时高亮图标 */
+.log-filter-container:focus-within .filter-icon {
     color: #667eea;
 }
 
-.log-filter-input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-}
-
+/* 保留并修正旧的 focus 规则（如果存在）*/
+/* .log-filter-input:focus + .filter-icon 无法匹配当前结构，使用上面的 :focus-within 代替 */
 .log-refresh-indicator {
     display: flex;
     align-items: center;

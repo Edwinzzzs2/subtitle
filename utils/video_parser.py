@@ -40,12 +40,14 @@ class VideoFileParser:
             'mkv', 'mp4', 'avi', 'mov'
         ]
 
-    def parse_video_filename(self, filepath):
+    def parse_video_filename(self, filepath, content_type=None):
         """
-        解析视频文件名，提取剧名和集数信息
+        解析视频文件名，提取剧名、季数、集数等信息
 
         Args:
-            filepath: 视频文件路径或文件名
+            filepath: 视频文件路径
+            content_type: 内容类型 ('movie', 'tv_series', None)
+                         None表示自动检测
 
         Returns:
             dict: 包含剧名、季数、集数等信息的字典，解析失败返回None
@@ -62,35 +64,234 @@ class VideoFileParser:
             logger.info(f"解析视频文件: {filename}")
             logger.info(f"文件目录: {file_dir}")
 
-            # 提取集数信息
-            episode_info = self._extract_episode_info(filename_without_ext)
-            if not episode_info:
-                logger.warning(f"未找到集数信息: {filename}")
-                return None
-
+            # 如果指定了具体类型，直接使用对应的解析方法
+            if content_type == 'movie':
+                return self._parse_movie_filename(filename_without_ext, filename, file_dir, file_ext)
+            elif content_type == 'tv_series':
+                return self._parse_tv_series_filename(filename_without_ext, filename, file_dir, file_ext)
+            
+            # 自动检测类型：通过正则匹配优先判断
+            detected_type = self._detect_content_type(filename_without_ext)
+            logger.debug(f"检测到的内容类型: {detected_type}")
+            
+            if detected_type == 'movie':
+                movie_result = self._parse_movie_filename(filename_without_ext, filename, file_dir, file_ext)
+                if movie_result:
+                    return movie_result
+                # 电影解析失败，尝试电视剧解析作为备选
+                logger.debug("电影解析失败，尝试电视剧解析")
+                return self._parse_tv_series_filename(filename_without_ext, filename, file_dir, file_ext)
+            else:
+                # 优先尝试电视剧解析
+                tv_result = self._parse_tv_series_filename(filename_without_ext, filename, file_dir, file_ext)
+                if tv_result:
+                    return tv_result
+                # 电视剧解析失败，尝试电影解析作为备选
+                logger.debug("电视剧解析失败，尝试电影解析")
+                return self._parse_movie_filename(filename_without_ext, filename, file_dir, file_ext)
+            
+        except Exception as e:
+            logger.error(f"解析视频文件名时发生错误: {e}")
+            return None
+    
+    def _detect_content_type(self, filename):
+        """
+        通过正则匹配检测内容类型
+        
+        Args:
+            filename: 文件名（不含扩展名）
+            
+        Returns:
+            str: 'movie' 或 'tv_series'
+        """
+        # 电影特征模式（优先级从高到低）
+        movie_patterns = [
+            r'.+\s*\(\d{4}\)\s*[-–—]?\s*',  # 包含年份的格式：电影名 (年份)
+            r'.+\s+\d{4}\s*[-–—]\s*',      # 电影名 年份 - 格式（更严格）
+            r'.+\s+\d{4}\s*$',             # 以年份结尾：电影名 年份
+        ]
+        
+        # 电视剧特征模式（优先级从高到低）
+        tv_patterns = [
+            r'.*[Ss]\d+[Ee]\d+.*',          # S01E01 格式
+            r'.*第\s*\d+\s*[集话期].*',        # 第X集/话/期
+            r'.*[Ee][Pp]?\s*\d+.*',         # EP01, E01 格式
+            r'.*\s+\d+\s*$',               # 以数字结尾（集数）
+            r'.*[-–—]\s*\d+\s*$',          # 以-数字结尾
+        ]
+        
+        # 先检查电影模式
+        for pattern in movie_patterns:
+            if re.search(pattern, filename, re.IGNORECASE):
+                logger.debug(f"匹配到电影模式: {pattern}")
+                return 'movie'
+        
+        # 再检查电视剧模式
+        for pattern in tv_patterns:
+            if re.search(pattern, filename, re.IGNORECASE):
+                logger.debug(f"匹配到电视剧模式: {pattern}")
+                return 'tv_series'
+        
+        # 默认返回电视剧（保持向后兼容）
+        logger.debug("未匹配到明确模式，默认为电视剧")
+        return 'tv_series'
+    
+    def _parse_tv_series_filename(self, filename_without_ext, full_filename, file_dir, file_ext):
+        """
+        解析电视剧文件名
+        """
+        # 提取集数信息
+        episode_info = self._extract_episode_info(filename_without_ext)
+        if episode_info:
             # 提取剧名
             series_name = self._extract_series_name(
                 filename_without_ext, episode_info)
-            if not series_name:
-                logger.warning(f"未找到剧名: {filename}")
-                return None
+            if series_name:
+                result = {
+                    'series_name': series_name.strip(),
+                    'season': episode_info.get('season'),
+                    'episode': episode_info['episode'],
+                    'original_filename': filename_without_ext,
+                    'full_filename': full_filename,
+                    'file_dir': file_dir,
+                    'file_ext': file_ext,
+                    'content_type': 'tv_series'
+                }
+                logger.info(f"电视剧解析结果: {result}")
+                return result
+        
+        logger.debug(f"无法解析电视剧文件名: {full_filename}")
+        return None
 
-            result = {
-                'series_name': series_name.strip(),
-                'season': episode_info.get('season'),
-                'episode': episode_info['episode'],
-                'original_filename': filename_without_ext,  # 不包含扩展名的文件名
-                'full_filename': filename,  # 包含扩展名的完整文件名
-                'file_dir': file_dir,
-                'file_ext': file_ext
-            }
-
-            logger.info(f"解析结果: {result}")
-            return result
-
-        except Exception as e:
-            logger.error(f"解析视频文件名时出错: {filepath}, 错误: {e}")
+    def _parse_movie_filename(self, filename_without_ext, full_filename, file_dir, file_ext):
+        """
+        解析电影文件名，提取电影名和年份信息
+        
+        电影文件名格式通常为：电影名 (年份) - 分辨率.扩展名
+        例如：红楼梦之金玉良缘 (2024) - 2160p.mkv
+        
+        Args:
+            filename_without_ext: 不包含扩展名的文件名
+            full_filename: 包含扩展名的完整文件名
+            file_dir: 文件目录
+            file_ext: 文件扩展名
+            
+        Returns:
+            dict: 包含电影名、年份等信息的字典，解析失败返回None
+        """
+        try:
+            logger.debug(f"尝试解析电影文件名: {filename_without_ext}")
+            
+            # 电影文件名的正则表达式模式
+            # 匹配格式：电影名 (年份) - 其他信息
+            movie_pattern = r'^(.+?)\s*\((\d{4})\)\s*-?\s*(.*?)$'
+            
+            match = re.match(movie_pattern, filename_without_ext)
+            if match:
+                movie_name = match.group(1).strip()
+                year = int(match.group(2))
+                extra_info = match.group(3).strip() if match.group(3) else ''
+                
+                # 验证年份是否合理（1900-2030）
+                if not (1900 <= year <= 2030):
+                    logger.debug(f"年份不合理，跳过电影解析: {year}")
+                    return None
+                
+                # 清理电影名中的多余信息
+                clean_movie_name = self._clean_movie_name(movie_name)
+                if not clean_movie_name or len(clean_movie_name) < 2:
+                    logger.debug(f"电影名太短或为空，跳过: {clean_movie_name}")
+                    return None
+                
+                result = {
+                    'series_name': clean_movie_name,  # 使用series_name保持兼容性
+                    'movie_name': clean_movie_name,   # 电影专用字段
+                    'year': year,
+                    'season': None,  # 电影没有季数
+                    'episode': 1,    # 电影视为第1集
+                    'original_filename': filename_without_ext,
+                    'full_filename': full_filename,
+                    'file_dir': file_dir,
+                    'file_ext': file_ext,
+                    'content_type': 'movie',
+                    'extra_info': extra_info  # 分辨率等额外信息
+                }
+                
+                logger.info(f"电影解析结果: {result}")
+                return result
+            
+            # 如果不匹配标准格式，尝试更宽松的匹配
+            # 匹配包含年份的文件名
+            loose_pattern = r'^(.+?).*?(\d{4}).*?$'
+            loose_match = re.search(loose_pattern, filename_without_ext)
+            
+            if loose_match:
+                movie_name = loose_match.group(1).strip()
+                year = int(loose_match.group(2))
+                
+                # 验证年份是否合理
+                if 1900 <= year <= 2030:
+                    # 清理电影名
+                    clean_movie_name = self._clean_movie_name(movie_name)
+                    if clean_movie_name and len(clean_movie_name) >= 2:
+                        result = {
+                            'series_name': clean_movie_name,
+                            'movie_name': clean_movie_name,
+                            'year': year,
+                            'season': None,
+                            'episode': 1,
+                            'original_filename': filename_without_ext,
+                            'full_filename': full_filename,
+                            'file_dir': file_dir,
+                            'file_ext': file_ext,
+                            'content_type': 'movie',
+                            'extra_info': ''
+                        }
+                        
+                        logger.info(f"电影解析结果（宽松匹配）: {result}")
+                        return result
+            
+            logger.debug(f"无法解析为电影文件名: {filename_without_ext}")
             return None
+            
+        except Exception as e:
+            logger.error(f"解析电影文件名时出错: {filename_without_ext}, 错误: {e}")
+            return None
+    
+    def _clean_movie_name(self, movie_name):
+        """
+        清理电影名称，移除不必要的信息
+        
+        Args:
+            movie_name: 原始电影名
+            
+        Returns:
+            str: 清理后的电影名
+        """
+        try:
+            clean_name = movie_name
+            
+            # 移除常见的视频质量和编码信息
+            quality_patterns = [
+                r'\b(1080p|720p|480p|4k|2160p|uhd|hd)\b',
+                r'\b(x264|x265|h264|h265|hevc)\b',
+                r'\b(bluray|webrip|hdtv|dvdrip|bdrip|web-dl)\b',
+                r'\b(aac|ac3|dts|flac|mp3)\b',
+                r'\[(.*?)\]',  # 移除方括号内容
+            ]
+            
+            for pattern in quality_patterns:
+                clean_name = re.sub(pattern, '', clean_name, flags=re.IGNORECASE)
+            
+            # 清理分隔符和多余空格
+            clean_name = re.sub(r'[-_\s]+', ' ', clean_name)
+            clean_name = clean_name.strip(' -_')
+            
+            return clean_name
+            
+        except Exception as e:
+            logger.error(f"清理电影名时出错: {movie_name}, 错误: {e}")
+            return movie_name
 
     def _extract_episode_info(self, filename):
         """
