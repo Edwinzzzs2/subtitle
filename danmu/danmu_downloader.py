@@ -537,8 +537,17 @@ class DanmuDownloader:
         try:
             logger.debug(f"匹配集数: {target_episode_num}")
 
+            # 优先使用 episodeIndex 字段进行精确匹配
             for episode in episodes:
-                episode_title = episode.get('episodeTitle', '')
+                episode_index = episode.get('episodeIndex')
+                if episode_index == target_episode_num:
+                    episode_title = episode.get('title', episode.get('episodeTitle', 'Unknown'))
+                    logger.debug(f"通过episodeIndex匹配到集数: {episode_title} (索引: {episode_index})")
+                    return episode
+
+            # 如果episodeIndex匹配失败，尝试从标题中提取集数
+            for episode in episodes:
+                episode_title = episode.get('title', episode.get('episodeTitle', ''))
 
                 # 尝试从标题中提取集数
                 import re
@@ -555,14 +564,15 @@ class DanmuDownloader:
 
                 for pattern in patterns:
                     if re.search(pattern, episode_title, re.IGNORECASE):
-                        logger.debug(f"匹配到集数: {episode_title}")
+                        logger.debug(f"通过标题匹配到集数: {episode_title}")
                         return episode
 
             # 如果按标题匹配失败，尝试按索引匹配（从1开始）
             if 1 <= target_episode_num <= len(episodes):
                 episode = episodes[target_episode_num - 1]
+                episode_title = episode.get('title', episode.get('episodeTitle', 'Unknown'))
                 logger.debug(
-                    f"按索引匹配到集数: {episode.get('episodeTitle', 'Unknown')}")
+                    f"按数组索引匹配到集数: {episode_title}")
                 return episode
 
             logger.warning(f"未找到匹配的集数: {target_episode_num}")

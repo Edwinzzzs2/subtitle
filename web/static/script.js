@@ -486,7 +486,8 @@ class SubtitleWatcher {
   updateStatus(status) {
     // 基本状态
     const isRunning = status.running || status.watching; // 兼容新旧字段名
-    this.lastUpdateLog.textContent = new Date().toLocaleTimeString();
+    // 使用后端返回的北京时间，如果没有则显示当前时间
+    this.lastUpdateLog.textContent = status.current_time || new Date().toLocaleTimeString();
     this.processedCountLog.textContent = status.processed_count || 0;
 
     // 更新头部状态指示器
@@ -562,25 +563,8 @@ class SubtitleWatcher {
       .map((log, index) => {
         const level = log.level || "INFO";
         const levelClass = level.toLowerCase();
-        // 格式化时间戳为月-日 时:分:秒格式
-        let formattedTime = "";
-        if (log.timestamp) {
-          try {
-            const date = new Date(log.timestamp);
-            if (!isNaN(date.getTime())) {
-              const month = String(date.getMonth() + 1).padStart(2, "0");
-              const day = String(date.getDate()).padStart(2, "0");
-              const hours = String(date.getHours()).padStart(2, "0");
-              const minutes = String(date.getMinutes()).padStart(2, "0");
-              const seconds = String(date.getSeconds()).padStart(2, "0");
-              formattedTime = `${month}-${day} ${hours}:${minutes}:${seconds}`;
-            } else {
-              formattedTime = log.timestamp;
-            }
-          } catch (e) {
-            formattedTime = log.timestamp;
-          }
-        }
+        // 直接使用后端返回的北京时间，不做格式化处理
+        const formattedTime = log.timestamp || "";
 
         // 为新日志添加高亮效果
         const isNewLog = hasNewLogs && index >= currentLogCount;

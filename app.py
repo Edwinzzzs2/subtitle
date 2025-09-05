@@ -38,7 +38,8 @@ def status():
     watcher_status = get_status()
     return jsonify({
         "running": watcher_status['running'],
-        "processed_count": watcher_status['processed_count']
+        "processed_count": watcher_status['processed_count'],
+        "current_time": watcher_status['current_time']
     })
 
 
@@ -123,15 +124,24 @@ def get_logs():
                             })
                         else:
                             # 如果格式不匹配，直接显示原始行
+                            # 使用北京时间
+                            from utils.watcher import get_beijing_formatter
+                            import pytz
+                            beijing_tz = pytz.timezone('Asia/Shanghai')
+                            beijing_time = datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
                             logs.append({
-                                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'timestamp': beijing_time,
                                 'message': line,
                                 'level': 'INFO'
                             })
         except Exception as e:
             # 如果读取日志文件失败，添加错误信息
+            # 使用北京时间
+            import pytz
+            beijing_tz = pytz.timezone('Asia/Shanghai')
+            beijing_time = datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
             logs.append({
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': beijing_time,
                 'message': f"读取日志文件失败: {str(e)}",
                 'level': 'ERROR'
             })
@@ -485,9 +495,9 @@ if __name__ == '__main__':
         file_handler.setLevel(logging.DEBUG)
 
         # 格式化器
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        # 使用北京时间格式化器
+        from utils.watcher import get_beijing_formatter
+        formatter = get_beijing_formatter()
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
 

@@ -47,6 +47,28 @@ _handler = None  # 全局处理器实例
 _danmu_downloader = None  # 弹幕下载器实例
 
 
+class BeijingTimeFormatter(logging.Formatter):
+    """使用北京时间的日志时间格式化器"""
+
+    def __init__(self, fmt=None, datefmt=None, tz_name: str = 'Asia/Shanghai'):
+        super().__init__(fmt, datefmt)
+        self.tz = pytz.timezone(tz_name)
+
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created, self.tz)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def get_beijing_formatter():
+    """获取统一的北京时间日志格式化器"""
+    return BeijingTimeFormatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+
 def get_global_downloader():
     """获取全局弹幕下载器实例
 
@@ -106,10 +128,8 @@ def setup_logger():
     file_handler = logging.FileHandler('logs/watcher.log', encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
 
-    # 格式化器
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # 使用统一的北京时间格式化器
+    formatter = get_beijing_formatter()
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
@@ -454,15 +474,13 @@ def update_config(new_config):
 
 def get_status():
     """获取监听器详细状态"""
-    from datetime import datetime
-    import pytz
     beijing_tz = pytz.timezone('Asia/Shanghai')
-    current_time = datetime.now(beijing_tz)
+    current_time = datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
     
     return {
         'running': is_running(),
         'processed_count': len(_processed_files),
-        'current_time': current_time.isoformat()
+        'current_time': current_time
     }
 
 

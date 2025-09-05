@@ -4,7 +4,7 @@ from .watcher import (
     start_watcher, stop_watcher, restart_watcher, is_running,
     get_processed_files, clear_processed_files, get_config, save_config,
     update_config, get_status, log_message, load_config, setup_logger,
-    add_processed_file
+    add_processed_file, get_beijing_formatter
 )
 
 # 字幕处理相关功能
@@ -18,7 +18,7 @@ __all__ = [
     'start_watcher', 'stop_watcher', 'restart_watcher', 'is_running',
     'get_processed_files', 'clear_processed_files', 'get_config', 'save_config',
     'update_config', 'get_status', 'log_message', 'load_config', 'setup_logger',
-    'add_processed_file',
+    'add_processed_file', 'get_beijing_formatter',
 
     # 字幕处理相关功能
     'modify_xml', 'create_test_xml', 'create_test_video',
