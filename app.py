@@ -102,8 +102,8 @@ def get_logs():
         try:
             with open(log_file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-                # 获取最后100行，提供更多日志历史
-                recent_lines = lines[-100:] if len(lines) > 100 else lines
+                # 显示所有日志行，与后端日志文件保持一致
+                recent_lines = lines
 
                 for line in recent_lines:
                     line = line.strip()
@@ -233,6 +233,14 @@ def config():
             if not filtered_config:
                 return jsonify({"message": "没有有效的配置项", "success": False})
 
+            # 处理API密钥保护逻辑
+            if 'danmu_api' in filtered_config and 'token' in filtered_config['danmu_api']:
+                if filtered_config['danmu_api']['token'] == '*****':
+                    # 如果token是*****，则不更新token字段，保持原有值
+                    current_config = get_config()
+                    current_danmu_api = current_config.get('danmu_api', {})
+                    filtered_config['danmu_api']['token'] = current_danmu_api.get('token', '')
+
             # 更新配置
             update_config(filtered_config)
 
@@ -249,8 +257,16 @@ def config():
         # 返回当前配置
         try:
             current_config = get_config()
+            # 遮盖API密钥
+            if 'danmu_api' in current_config and 'token' in current_config['danmu_api']:
+                config_copy = current_config.copy()
+                config_copy['danmu_api'] = current_config['danmu_api'].copy()
+                if current_config['danmu_api']['token']:
+                    config_copy['danmu_api']['token'] = '*****'
+            else:
+                config_copy = current_config
             return jsonify({
-                "config": current_config,
+                "config": config_copy,
                 "success": True
             })
         except Exception as e:
@@ -270,7 +286,13 @@ def danmu_config():
             if 'base_url' in data:
                 danmu_api_config['base_url'] = data['base_url']
             if 'token' in data:
-                danmu_api_config['token'] = data['token']
+                if data['token'] == '*****':
+                    # 如果token是*****，则不更新token字段，保持原有值
+                    current_config = get_config()
+                    current_danmu_api = current_config.get('danmu_api', {})
+                    danmu_api_config['token'] = current_danmu_api.get('token', '')
+                else:
+                    danmu_api_config['token'] = data['token']
 
             if not danmu_api_config:
                 return jsonify({"message": "未提供有效的配置字段", "success": False})
@@ -292,8 +314,14 @@ def danmu_config():
         try:
             current_config = get_config()
             danmu_api = current_config.get('danmu_api', {})
+            # 遮盖API密钥
+            if 'token' in danmu_api and danmu_api['token']:
+                danmu_api_copy = danmu_api.copy()
+                danmu_api_copy['token'] = '*****'
+            else:
+                danmu_api_copy = danmu_api
             return jsonify({
-                "danmu_api": danmu_api,
+                "danmu_api": danmu_api_copy,
                 "success": True
             })
         except Exception as e:
