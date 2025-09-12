@@ -128,7 +128,8 @@ def get_logs():
                             from utils.watcher import get_beijing_formatter
                             import pytz
                             beijing_tz = pytz.timezone('Asia/Shanghai')
-                            beijing_time = datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
+                            beijing_time = datetime.now(
+                                beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
                             logs.append({
                                 'timestamp': beijing_time,
                                 'message': line,
@@ -139,7 +140,8 @@ def get_logs():
             # 使用北京时间
             import pytz
             beijing_tz = pytz.timezone('Asia/Shanghai')
-            beijing_time = datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
+            beijing_time = datetime.now(
+                beijing_tz).strftime('%Y-%m-%d %H:%M:%S')
             logs.append({
                 'timestamp': beijing_time,
                 'message': f"读取日志文件失败: {str(e)}",
@@ -239,7 +241,8 @@ def config():
                     # 如果token是*****，则不更新token字段，保持原有值
                     current_config = get_config()
                     current_danmu_api = current_config.get('danmu_api', {})
-                    filtered_config['danmu_api']['token'] = current_danmu_api.get('token', '')
+                    filtered_config['danmu_api']['token'] = current_danmu_api.get(
+                        'token', '')
 
             # 更新配置
             update_config(filtered_config)
@@ -290,7 +293,8 @@ def danmu_config():
                     # 如果token是*****，则不更新token字段，保持原有值
                     current_config = get_config()
                     current_danmu_api = current_config.get('danmu_api', {})
-                    danmu_api_config['token'] = current_danmu_api.get('token', '')
+                    danmu_api_config['token'] = current_danmu_api.get(
+                        'token', '')
                 else:
                     danmu_api_config['token'] = data['token']
 
@@ -335,7 +339,7 @@ def receive_webhook():
         # 获取请求数据
         data = request.get_json(silent=True) or {}
         headers = dict(request.headers)
-        
+
         # 创建webhook消息对象
         webhook_msg = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -343,15 +347,15 @@ def receive_webhook():
             "data": data,
             "remote_addr": request.remote_addr
         }
-        
+
         # 添加到消息列表，保持最多100条
         global webhook_messages
         webhook_messages.insert(0, webhook_msg)  # 新消息插入到列表开头
         if len(webhook_messages) > 100:
             webhook_messages = webhook_messages[:100]
-        
+
         log_message('info', f"收到webhook消息: {request.remote_addr}")
-        
+
         return jsonify({
             "success": True,
             "message": "Webhook消息已接收"
@@ -379,9 +383,9 @@ def clear_webhook_messages():
     global webhook_messages
     count = len(webhook_messages)
     webhook_messages = []
-    
+
     log_message('info', f"清空了{count}条webhook消息")
-    
+
     return jsonify({
         "success": True,
         "message": f"已清空{count}条webhook消息"
@@ -450,6 +454,49 @@ def get_cache_stats():
         return jsonify({
             "success": False,
             "message": f"获取缓存统计失败: {str(e)}"
+        })
+
+
+@app.route('/api/delete-ass-files', methods=['POST'])
+def delete_ass_files():
+    """删除监听目录下的所有ass文件"""
+    try:
+        from utils.delete_ass_files import delete_ass_files as delete_func
+        result = delete_func()
+
+        if result['success']:
+            log_message('info', f"删除ass文件操作完成: {result['message']}")
+        else:
+            log_message('error', f"删除ass文件操作失败: {result['message']}")
+
+        return jsonify(result)
+
+    except Exception as e:
+        error_msg = f"删除ass文件时发生错误: {str(e)}"
+        log_message('error', error_msg)
+        return jsonify({
+            "success": False,
+            "deleted_count": 0,
+            "failed_count": 0,
+            "message": error_msg
+        })
+
+
+@app.route('/api/count-ass-files', methods=['GET'])
+def count_ass_files():
+    """统计监听目录下的ass文件数量"""
+    try:
+        from utils.delete_ass_files import count_ass_files as count_func
+        result = count_func()
+        return jsonify(result)
+
+    except Exception as e:
+        error_msg = f"统计ass文件时发生错误: {str(e)}"
+        log_message('error', error_msg)
+        return jsonify({
+            "success": False,
+            "count": 0,
+            "message": error_msg
         })
 
 

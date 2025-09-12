@@ -30,6 +30,7 @@ class SubtitleWatcher {
     this.createTestBtn = document.getElementById("create-test-btn");
 
     this.clearCacheBtn = document.getElementById("clear-cache-btn");
+    this.deleteAssFilesBtn = document.getElementById("delete-ass-files-btn");
 
     // 状态元素
     this.statusText = document.getElementById("status-text");
@@ -88,6 +89,7 @@ class SubtitleWatcher {
     this.createTestBtn.addEventListener("click", () => this.createTestFile());
 
     this.clearCacheBtn.addEventListener("click", () => this.clearCache());
+    this.deleteAssFilesBtn.addEventListener("click", () => this.deleteAssFiles());
 
     // Cron定时任务事件
     this.cronEnabled.addEventListener("change", () => this.toggleCron());
@@ -502,6 +504,53 @@ class SubtitleWatcher {
       this.showNotification("清除缓存失败：网络错误", "error");
     } finally {
       this.setButtonLoading(this.clearCacheBtn, false);
+    }
+  }
+
+  async deleteAssFiles() {
+    if (!this.deleteAssFilesBtn) return;
+
+    try {
+      // 先获取ASS文件数量
+      const countResponse = await this.apiCall("/count-ass-files");
+      
+      if (!countResponse || !countResponse.success) {
+        this.showNotification("获取ASS文件信息失败", "error");
+        return;
+      }
+
+      const fileCount = countResponse.count;
+      if (fileCount === 0) {
+        this.showNotification("监听目录下没有ASS文件", "info");
+        return;
+      }
+
+      // 显示确认对话框
+      const confirmed = confirm(`确定要删除监听目录下的 ${fileCount} 个ASS文件吗？\n\n此操作不可撤销！`);
+      
+      if (!confirmed) {
+        return;
+      }
+
+      this.setButtonLoading(this.deleteAssFilesBtn, true);
+
+      const response = await this.apiCall("/delete-ass-files", {
+        method: "POST",
+      });
+
+      if (response && response.success) {
+        this.showNotification(`成功删除 ${response.deleted_count} 个ASS文件`, "success");
+      } else {
+        this.showNotification(
+          response ? response.message : "删除ASS文件失败",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("删除ASS文件时出错:", error);
+      this.showNotification("删除ASS文件失败：网络错误", "error");
+    } finally {
+      this.setButtonLoading(this.deleteAssFilesBtn, false);
     }
   }
 
